@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'
+import { MermaidDiagram } from '@/components/ui/MermaidDiagram'
 
 interface MarkdownProps {
   children: string
@@ -19,8 +20,14 @@ export function Markdown({ children, className }: MarkdownProps) {
         ul: ({ children }) => <ul className="list-disc pl-5 mb-2 text-[14px] text-body space-y-0.5">{children}</ul>,
         ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 text-[14px] text-body space-y-0.5">{children}</ol>,
         li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-        code: ({ className, children }) => {
-          const isBlock = className?.includes('language-')
+        code: ({ className: codeClass, children }) => {
+          const isMermaid = codeClass?.includes('language-mermaid')
+          if (isMermaid) {
+            const code = String(children).trim()
+            return <MermaidDiagram code={code} className="my-2" />
+          }
+
+          const isBlock = codeClass?.includes('language-')
           if (isBlock) {
             return (
               <code className="block bg-surface-card border border-hairline rounded-md px-4 py-3 text-[13px] text-body font-mono overflow-x-auto whitespace-pre mb-2">

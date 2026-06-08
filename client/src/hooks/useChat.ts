@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { ChatMessage, AgentId } from '@/types'
+import type { ChatMessage, AgentId, Session } from '@/types'
 import { connect, send, subscribe } from '@/lib/ws'
 
 export function useChat() {
@@ -28,6 +28,13 @@ export function useChat() {
         case 'session:created':
           setSessionId(data.sessionId as string)
           break
+        case 'session:loaded': {
+          const session = data.session as Session
+          setSessionId(session.id)
+          setMessages(session.messages ?? [])
+          questionRef.current = { id: session.questionId, text: session.questionText }
+          break
+        }
         case 'chat:error':
           setTyping(false)
           setMessages((prev) => [
@@ -52,7 +59,13 @@ export function useChat() {
     questionRef.current = { id: questionId, text: questionText }
   }, [])
 
-  const sendMessage = useCallback((text: string) => {
+  const loadSession = useCallback((id: string) => {
+    setMessages([])
+    setTyping(false)
+    send({ type: 'session:load', sessionId: id })
+  }, [])
+
+  const sendMessage = useCallback((text: string, agentOverride?: AgentId) => {
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -61,25 +74,27 @@ export function useChat() {
     }
     setMessages((prev) => [...prev, userMsg])
 
+    const effectiveAgent = agentOverride ?? agent
+
     if (!sessionId && questionRef.current) {
-      // 첫 답변 → 새 세션 생성
       send({
         type: 'chat:send',
         questionId: questionRef.current.id,
         questionText: questionRef.current.text,
         message: text,
-        agent,
+        agent: effectiveAgent,
       })
     } else {
-      // 이어가기
       send({
         type: 'chat:send',
         sessionId,
         message: text,
-        agent,
+        agent: effectiveAgent,
       })
     }
   }, [sessionId, agent])
+
+  const activeQuestion = questionRef.current
 
   return {
     messages,
@@ -88,6 +103,8 @@ export function useChat() {
     agent,
     setAgent,
     startChat,
+    loadSession,
     sendMessage,
+    activeQuestion,
   }
 }

@@ -1,21 +1,42 @@
 import { useState, useRef, useCallback, type ReactNode } from 'react'
+import type { AgentId } from '@/types'
 import { Button } from '@/components/ui/Button'
+import { AgentSelector } from '@/components/chat/AgentSelector'
+
+const MENTION_MAP: Record<string, AgentId> = {
+  '튜터': 'tutor',
+  '리서처': 'researcher',
+  '다이어그램': 'diagrammer',
+}
+const MENTION_REGEX = /^@(튜터|리서처|다이어그램)\s*/
 
 interface ChatInputProps {
-  onSend: (message: string) => void
+  onSend: (message: string, agentOverride?: AgentId) => void
   onSkip?: () => void
   disabled?: boolean
   hintSlot?: ReactNode
+  agent?: AgentId
+  onAgentChange?: (agent: AgentId) => void
 }
 
-export function ChatInput({ onSend, onSkip, disabled, hintSlot }: ChatInputProps) {
+export function ChatInput({ onSend, onSkip, disabled, hintSlot, agent, onAgentChange }: ChatInputProps) {
   const [text, setText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim()
     if (!trimmed) return
-    onSend(trimmed)
+
+    // @멘션 파싱
+    const match = trimmed.match(MENTION_REGEX)
+    if (match) {
+      const agentOverride = MENTION_MAP[match[1]]
+      const cleanText = trimmed.replace(MENTION_REGEX, '').trim()
+      if (cleanText) onSend(cleanText, agentOverride)
+    } else {
+      onSend(trimmed)
+    }
+
     setText('')
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -48,14 +69,18 @@ export function ChatInput({ onSend, onSkip, disabled, hintSlot }: ChatInputProps
           onChange={(e) => { setText(e.target.value); handleInput() }}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder="답변을 입력하세요..."
+          placeholder="답변을 입력하세요... (@튜터, @리서처, @다이어그램)"
           rows={1}
           className="w-full bg-surface-elevated border border-hairline rounded-lg px-4 py-3 text-[14px] text-body placeholder-stone resize-none focus:outline-none focus:border-hairline-strong transition-colors"
         />
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[11px] text-stone">
-            @튜터 · @리서처 · @다이어그램
-          </span>
+          {agent && onAgentChange ? (
+            <AgentSelector agent={agent} onChange={onAgentChange} />
+          ) : (
+            <span className="text-[11px] text-stone">
+              @튜터 · @리서처 · @다이어그램
+            </span>
+          )}
           <div className="flex items-center gap-2">
             {hintSlot}
             {onSkip && (

@@ -30,13 +30,36 @@ export interface Evaluation {
   followUpQuestions: string[]
 }
 
+export interface FollowUpNode {
+  id: string
+  question: string
+  answer?: string
+  score?: number
+  status: 'answered' | 'unanswered' | 'current'
+  children: FollowUpNode[]
+}
+
+export interface SessionSummary {
+  id: string
+  questionId: string
+  questionText: string
+  mode: string
+  agent: string
+  createdAt: string
+  lastActivityAt?: string
+  messageCount: number
+}
+
 export interface Session {
   id: string
   claudeSessionId: string
   questionId: string
+  questionText: string
   mode: string
   agent: string
+  messages: ChatMessage[]
   createdAt: string
+  lastActivityAt?: string
 }
 
 export type AgentId = 'interviewer' | 'tutor' | 'researcher' | 'diagrammer'

@@ -1,20 +1,32 @@
-import type { Session } from '@/types'
+import type { SessionSummary } from '@/types'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 interface LearnSidebarProps {
-  sessions: Session[]
+  sessions: SessionSummary[]
   activeSessionId: string | null
   onSelectSession: (id: string) => void
   onNewSession: () => void
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return '방금'
+  if (mins < 60) return `${mins}분 전`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}시간 전`
+  const days = Math.floor(hrs / 24)
+  return `${days}일 전`
+}
+
 export function LearnSidebar({ sessions, activeSessionId, onSelectSession, onNewSession }: LearnSidebarProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
         <span className="text-[13px] text-mute font-medium">학습 세션</span>
+        <span className="text-[11px] text-stone">{sessions.length}개</span>
       </div>
       <div className="flex-1 overflow-auto px-2">
         {sessions.length === 0 ? (
@@ -25,14 +37,20 @@ export function LearnSidebar({ sessions, activeSessionId, onSelectSession, onNew
               key={s.id}
               onClick={() => onSelectSession(s.id)}
               className={cn(
-                'w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-left transition-colors mb-0.5',
+                'w-full flex items-start gap-2.5 px-3 py-2.5 rounded-md text-left transition-colors mb-0.5',
                 activeSessionId === s.id
                   ? 'bg-surface-elevated text-ink'
                   : 'text-mute hover:text-body hover:bg-surface-elevated/50',
               )}
             >
-              <Icon name="book" size={14} />
-              <span className="text-[13px] truncate flex-1">{s.questionId}</span>
+              <Icon name="book" size={14} className="mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] truncate">{s.questionText || s.questionId}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] text-stone">{timeAgo(s.lastActivityAt ?? s.createdAt)}</span>
+                  <span className="text-[10px] text-stone">{s.messageCount}개 메시지</span>
+                </div>
+              </div>
             </button>
           ))
         )}

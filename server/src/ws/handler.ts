@@ -2,7 +2,15 @@ import type { WebSocket } from 'ws'
 import { v4 as uuid } from 'uuid'
 import { startSession, resumeSession } from '../claude/cli.js'
 import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT } from '../claude/prompts.js'
-import { readOne, writeOne } from '../data/store.js'
+import { readAll, readOne, writeOne } from '../data/store.js'
+
+interface MessageEntry {
+  id: string
+  role: string
+  text: string
+  agent?: string
+  timestamp: string
+}
 
 interface HintEntry {
   level: number
@@ -17,9 +25,11 @@ interface Session {
   questionText: string
   mode: string
   agent: string
+  messages?: MessageEntry[]
   hints?: HintEntry[]
   hintSessionId?: string
   createdAt: string
+  lastActivityAt?: string
 }
 
 interface ClientMessage {
@@ -31,6 +41,12 @@ interface ClientMessage {
   agent?: string
   hintLevel?: number
   sandboxId?: string
+}
+
+function appendMessage(session: Session, msg: MessageEntry): Session {
+  session.messages = [...(session.messages ?? []), msg]
+  session.lastActivityAt = new Date().toISOString()
+  return session
 }
 
 export function handleWsConnection(ws: WebSocket) {
@@ -47,6 +63,12 @@ export function handleWsConnection(ws: WebSocket) {
       switch (msg.type) {
         case 'chat:send':
           await handleChatSend(ws, msg)
+          break
+        case 'session:list':
+          await handleSessionList(ws, msg)
+          break
+        case 'session:load':
+          await handleSessionLoad(ws, msg)
           break
         case 'hint:request':
           await handleHintRequest(ws, msg)
@@ -81,6 +103,12 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
     const response = await startSession(prompt, systemPrompt)
 
     const sessionId = `s_${uuid().slice(0, 8)}`
+    const now = new Date().toISOString()
+
+    // user 메시지 + assistant 메시지 저장
+    const userMsg: MessageEntry = { id: uuid(), role: 'user', text: msg.message ?? '', timestamp: now }
+    const assistantMsg: MessageEntry = { id: uuid(), role: agent, agent, text: response.result, timestamp: now }
+
     const session: Session = {
       id: sessionId,
       claudeSessionId: response.sessionId,
@@ -88,7 +116,9 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
       questionText,
       mode: 'learn',
       agent,
-      createdAt: new Date().toISOString(),
+      messages: [userMsg, assistantMsg],
+      createdAt: now,
+      lastActivityAt: now,
     }
     await writeOne('sessions', sessionId, session)
 
@@ -100,12 +130,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
 
     ws.send(JSON.stringify({
       type: 'chat:response',
-      message: {
-        id: uuid(),
-        role: agent,
-        text: response.result,
-        timestamp: new Date().toISOString(),
-      },
+      message: assistantMsg,
     }))
     return
   }
@@ -117,20 +142,71 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
     return
   }
 
+  // user 메시지 저장
+  const now = new Date().toISOString()
+  const userMsg: MessageEntry = { id: uuid(), role: 'user', text: msg.message ?? '', timestamp: now }
+  appendMessage(session, userMsg)
+
   ws.send(JSON.stringify({ type: 'chat:typing', agent }))
 
-  const response = await resumeSession(
-    session.claudeSessionId,
-    msg.message ?? '',
-  )
+  const response = await resumeSession(session.claudeSessionId, msg.message ?? '')
+
+  // assistant 메시지 저장
+  const assistantMsg: MessageEntry = { id: uuid(), role: agent, agent, text: response.result, timestamp: now }
+  appendMessage(session, assistantMsg)
+  await writeOne('sessions', session.id, session)
 
   ws.send(JSON.stringify({
     type: 'chat:response',
-    message: {
-      id: uuid(),
-      role: agent,
-      text: response.result,
-      timestamp: new Date().toISOString(),
+    message: assistantMsg,
+  }))
+}
+
+async function handleSessionList(ws: WebSocket, msg: ClientMessage) {
+  const mode = msg.message ?? 'learn'
+  const sessions = await readAll<Session>('sessions')
+
+  const filtered = sessions
+    .filter((s) => s.mode === mode)
+    .sort((a, b) => (b.lastActivityAt ?? b.createdAt).localeCompare(a.lastActivityAt ?? a.createdAt))
+    .map(({ id, questionId, questionText, mode: m, agent, createdAt, lastActivityAt, messages }) => ({
+      id,
+      questionId,
+      questionText,
+      mode: m,
+      agent,
+      createdAt,
+      lastActivityAt,
+      messageCount: messages?.length ?? 0,
+    }))
+
+  ws.send(JSON.stringify({ type: 'session:list', sessions: filtered }))
+}
+
+async function handleSessionLoad(ws: WebSocket, msg: ClientMessage) {
+  if (!msg.sessionId) {
+    ws.send(JSON.stringify({ type: 'chat:error', error: 'sessionId is required' }))
+    return
+  }
+
+  const session = await readOne<Session>('sessions', msg.sessionId)
+  if (!session) {
+    ws.send(JSON.stringify({ type: 'chat:error', error: 'Session not found' }))
+    return
+  }
+
+  ws.send(JSON.stringify({
+    type: 'session:loaded',
+    session: {
+      id: session.id,
+      claudeSessionId: session.claudeSessionId,
+      questionId: session.questionId,
+      questionText: session.questionText,
+      mode: session.mode,
+      agent: session.agent,
+      messages: session.messages ?? [],
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
     },
   }))
 }
@@ -139,7 +215,6 @@ async function handleHintRequest(ws: WebSocket, msg: ClientMessage) {
   const questionId = msg.questionId ?? ''
   const questionText = msg.questionText ?? ''
 
-  // 질문별 힌트 데이터 로드 (있으면)
   const hintDataId = `hints_${questionId}`
   let hintData = await readOne<Session>('sessions', hintDataId)
 
@@ -152,7 +227,6 @@ async function handleHintRequest(ws: WebSocket, msg: ClientMessage) {
   ws.send(JSON.stringify({ type: 'hint:loading' }))
 
   if (!hintData) {
-    // 첫 힌트 → 힌트 세션 생성
     const prompt = `면접 질문: "${questionText}"\n\n힌트 ${level}단계를 제공해주세요.`
     const response = await startSession(prompt, HINT_PROMPT)
 
@@ -178,7 +252,6 @@ async function handleHintRequest(ws: WebSocket, msg: ClientMessage) {
     return
   }
 
-  // 기존 힌트 세션 이어가기
   const prompt = `힌트 ${level}단계를 제공해주세요. 이전 힌트보다 더 구체적으로 알려주세요.`
   const response = await resumeSession(hintData.claudeSessionId, prompt)
 
@@ -211,7 +284,6 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
   ws.send(JSON.stringify({ type: 'sandbox:typing' }))
 
   if (!msg.sandboxId) {
-    // 새 샌드박스 세션
     const response = await startSession(msg.message ?? '', SANDBOX_PROMPT)
 
     const sandboxId = `sb_${uuid().slice(0, 8)}`
@@ -226,23 +298,14 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
     }
     await writeOne('sessions', sandboxId, session)
 
-    ws.send(JSON.stringify({
-      type: 'sandbox:created',
-      sandboxId,
-    }))
-
+    ws.send(JSON.stringify({ type: 'sandbox:created', sandboxId }))
     ws.send(JSON.stringify({
       type: 'sandbox:response',
-      message: {
-        id: uuid(),
-        text: response.result,
-        timestamp: new Date().toISOString(),
-      },
+      message: { id: uuid(), text: response.result, timestamp: new Date().toISOString() },
     }))
     return
   }
 
-  // 기존 샌드박스 이어가기
   const session = await readOne<Session>('sessions', msg.sandboxId)
   if (!session) {
     ws.send(JSON.stringify({ type: 'chat:error', error: 'Sandbox session not found' }))
@@ -253,10 +316,6 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
 
   ws.send(JSON.stringify({
     type: 'sandbox:response',
-    message: {
-      id: uuid(),
-      text: response.result,
-      timestamp: new Date().toISOString(),
-    },
+    message: { id: uuid(), text: response.result, timestamp: new Date().toISOString() },
   }))
 }
