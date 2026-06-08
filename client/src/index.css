@@ -1,0 +1,49 @@
+@import './tokens.css';
+@import 'tailwindcss';
+
+@theme {
+  /* surface */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-card: var(--surface-card);
+
+  /* text */
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-charcoal: var(--charcoal);
+  --color-mute: var(--mute);
+  --color-ash: var(--ash);
+  --color-stone: var(--stone);
+
+  /* hairline */
+  --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
+  --color-hairline-strong: var(--hairline-strong);
+
+  /* accents */
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-blue-soft: var(--accent-blue-soft);
+  --color-accent-red: var(--accent-red);
+  --color-accent-red-soft: var(--accent-red-soft);
+  --color-accent-green: var(--accent-green);
+  --color-accent-green-soft: var(--accent-green-soft);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-yellow-soft: var(--accent-yellow-soft);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-purple-soft: var(--accent-purple-soft);
+
+  /* hero */
+  --color-hero-start: var(--hero-stripe-start);
+  --color-hero-end: var(--hero-stripe-end);
+
+  /* radii */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+
+  /* font */
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
+}

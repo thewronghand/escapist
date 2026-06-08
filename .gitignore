@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# 서버 데이터 (로컬 사용자 데이터)
+server/data/questions/
+server/data/sessions/
+!server/data/questions/.gitkeep
+!server/data/sessions/.gitkeep
+
+# 디자인 레퍼런스 (zip 원본은 올리지 않음)
+Escapist.zip
+Escapist-design/

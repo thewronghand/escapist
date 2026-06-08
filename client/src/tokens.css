@@ -1,0 +1,203 @@
+/* ============================================================
+   Escapist — design tokens (Raycast-derived dark system)
+   Source: DESIGN.md (alpha / Raycast-design-analysis)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900&display=swap');
+
+:root {
+  /* brand / action */
+  --white: #ffffff;
+  --white-pressed: #e8e8e8;
+  --on-primary: #000000;
+
+  /* text ladder */
+  --ink: #f4f4f6;
+  --body: #cdcdcd;
+  --charcoal: #d3d3d4;
+  --mute: #9c9c9d;
+  --ash: #6a6b6c;
+  --stone: #434345;
+  --on-dark: #ffffff;
+  --on-dark-mute: rgba(255, 255, 255, 0.72);
+
+  /* surface ladder */
+  --canvas: #07080a;
+  --surface: #0d0d0d;
+  --surface-elevated: #101111;
+  --surface-card: #121212;
+  --button-fg: #18191a;
+
+  /* hairlines */
+  --hairline: #242728;
+  --hairline-soft: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.16);
+
+  /* accents (illustration-only) */
+  --accent-blue: #57c1ff;
+  --accent-blue-soft: rgba(87, 193, 255, 0.15);
+  --accent-red: #ff6161;
+  --accent-red-soft: rgba(255, 97, 97, 0.15);
+  --accent-green: #59d499;
+  --accent-green-soft: rgba(89, 212, 153, 0.15);
+  --accent-yellow: #ffc533;
+  --accent-yellow-soft: rgba(255, 197, 51, 0.15);
+  --accent-purple: #b08cff;
+  --accent-purple-soft: rgba(176, 140, 255, 0.15);
+
+  /* hero stripe */
+  --hero-stripe-start: #ff5757;
+  --hero-stripe-end: #a1131a;
+
+  /* radii */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 16px;
+  --r-full: 9999px;
+
+  /* spacing */
+  --s-xxs: 2px;
+  --s-xs: 4px;
+  --s-sm: 8px;
+  --s-md: 12px;
+  --s-lg: 16px;
+  --s-xl: 24px;
+  --s-xxl: 32px;
+  --s-section: 96px;
+
+  --font: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
+  --feat: "calt", "kern", "liga", "ss03";
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font);
+  font-feature-settings: var(--feat);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root { height: 100%; }
+
+button { font-family: inherit; font-feature-settings: var(--feat); cursor: pointer; }
+input, textarea, select { font-family: inherit; font-feature-settings: var(--feat); }
+
+::selection { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+/* scrollbars — quiet, dark */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: #1c1d1f;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: #2c2d2f; background-clip: padding-box; }
+
+/* ------------ motion (restrained: fade / slide) ------------ */
+@keyframes esc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes esc-rise {
+  from { transform: translateY(10px); }
+  to { transform: translateY(0); }
+}
+@keyframes esc-rise-sm {
+  from { transform: translateY(5px); }
+  to { transform: translateY(0); }
+}
+@keyframes esc-slide-left {
+  from { transform: translateX(16px); }
+  to { transform: translateX(0); }
+}
+@keyframes esc-slide-right {
+  from { transform: translateX(-16px); }
+  to { transform: translateX(0); }
+}
+@keyframes esc-pop {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes esc-spin { to { transform: rotate(360deg); } }
+@keyframes esc-blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+@keyframes esc-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes esc-streak-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+@keyframes esc-stripe-drift {
+  from { background-position: 0 0; }
+  to { background-position: 120px 0; }
+}
+
+.esc-fade { animation: esc-fade-in 0.35s ease both; }
+.esc-rise { animation: esc-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* hero red diagonal-stripe band (used once per page max) */
+.esc-stripe-band {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.9;
+  background:
+    repeating-linear-gradient(
+      115deg,
+      transparent 0,
+      transparent 38px,
+      rgba(255, 87, 87, 0.0) 38px,
+      var(--hero-stripe-start) 60px,
+      var(--hero-stripe-end) 96px,
+      transparent 120px,
+      transparent 150px
+    );
+  mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+}
+
+/* reusable hairline card */
+.esc-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+}
+
+/* keycap */
+.esc-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-xs);
+  background: linear-gradient(180deg, var(--surface-card), var(--surface));
+  border: 1px solid var(--hairline);
+  border-bottom-color: #050506;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: var(--body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.esc-no-scrollbar::-webkit-scrollbar { display: none; }
+.esc-no-scrollbar { scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
