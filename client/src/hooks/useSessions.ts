@@ -1,29 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { SessionSummary } from '@/types'
-import { send, subscribe } from '@/lib/ws'
 
 export function useSessions(mode = 'learn') {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const unsub = subscribe((data) => {
-      if (data.type === 'session:list') {
-        setSessions(data.sessions as SessionSummary[])
-        setLoading(false)
-      }
-    })
-    return unsub
-  }, [])
-
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setLoading(true)
-    send({ type: 'session:list', message: mode })
+    try {
+      const res = await fetch(`/api/sessions?mode=${mode}`)
+      if (res.ok) {
+        const data = await res.json() as SessionSummary[]
+        setSessions(data)
+      }
+    } catch (err) {
+      console.error('Failed to load sessions:', err)
+    } finally {
+      setLoading(false)
+    }
   }, [mode])
 
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  useEffect(() => { refresh() }, [refresh])
 
   return { sessions, loading, refresh }
 }
