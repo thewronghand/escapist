@@ -6,7 +6,7 @@ interface SidebarShellProps {
 
 export function SidebarShell({ children }: SidebarShellProps) {
   return (
-    <aside className="w-[248px] shrink-0 border-r border-hairline bg-surface flex flex-col min-h-0">
+    <aside className="hidden sm:flex w-[248px] shrink-0 border-r border-hairline bg-surface flex-col min-h-0">
       {children}
     </aside>
   )
