@@ -47,6 +47,7 @@ function App() {
       {activeNav === 'learn' && (
         <LearnPage
           chat={chat}
+          sessions={sessions.sessions}
           view={learnView}
           setView={setLearnView}
           onSessionCreated={sessions.refresh}

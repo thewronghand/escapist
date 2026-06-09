@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import type { Question, ChatMessage, Evaluation, FollowUpNode } from '@/types'
+import type { Question, ChatMessage, Evaluation, FollowUpNode, SessionSummary } from '@/types'
 import type { AgentId } from '@/types'
 import { useQuestions } from '@/hooks/useQuestions'
 import { useHints } from '@/hooks/useHints'
@@ -28,15 +28,17 @@ interface LearnPageProps {
     agent: AgentId
     setAgent: (a: AgentId) => void
     startChat: (questionId: string, questionText: string) => void
+    loadSession: (id: string) => void
     sendMessage: (text: string, agentOverride?: AgentId) => void
     activeQuestion: { id: string; text: string } | null
   }
+  sessions: SessionSummary[]
   view: 'select' | 'session'
   setView: (v: 'select' | 'session') => void
   onSessionCreated: () => void
 }
 
-export function LearnPage({ chat, view, setView, onSessionCreated }: LearnPageProps) {
+export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: LearnPageProps) {
   const { questions, add, reload: reloadQuestions } = useQuestions()
   const hints = useHints()
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null)
@@ -81,7 +83,14 @@ export function LearnPage({ chat, view, setView, onSessionCreated }: LearnPagePr
     })
     setCurrentTreeNodeId('root')
     setTreeOpen(false)
-    chat.startChat(q.id, q.question)
+
+    // 기존 세션이 있으면 로드, 없으면 새 세션
+    const existingSession = sessions.find((s) => s.questionId === q.id)
+    if (existingSession) {
+      chat.loadSession(existingSession.id)
+    } else {
+      chat.startChat(q.id, q.question)
+    }
     hints.initForQuestion(q.id, q.question)
   }
 
