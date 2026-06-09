@@ -162,16 +162,37 @@ export function handleWsConnection(ws: WebSocket) {
 
 async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
   const agent = msg.agent ?? 'interviewer'
-  const isSkip = msg.message === '__SKIP__'
-  const userMessage = isSkip ? '모르겠습니다. 이 질문에 대해 설명해주세요.' : (msg.message ?? '')
+  const rawMessage = msg.message ?? ''
+  const isSkip = rawMessage === '__SKIP__'
+  const isFollowUpAnswer = rawMessage.startsWith('__FOLLOWUP_ANSWER__')
+  const isExplain = rawMessage.startsWith('__EXPLAIN__')
+
+  let userMessage: string
+  let claudePrompt: string | null = null
+
+  if (isSkip) {
+    userMessage = '모르겠습니다.'
+    claudePrompt = '사용자가 이 질문에 답변하지 못했습니다. 핵심 개념을 쉽게 설명해주고, 이해를 확인하는 질문을 해주세요.'
+  } else if (isFollowUpAnswer) {
+    const parts = rawMessage.replace('__FOLLOWUP_ANSWER__', '').split('__SEP__')
+    const followUpQ = parts[0] ?? ''
+    const answer = parts[1] ?? ''
+    userMessage = answer
+    claudePrompt = `면접관이 꼬리질문을 했습니다: "${followUpQ}"\n\n사용자의 답변: ${answer}\n\n위 답변을 평가해주세요.`
+  } else if (isExplain) {
+    const followUpQ = rawMessage.replace('__EXPLAIN__', '')
+    userMessage = `"${followUpQ}"에 대한 모범답변을 알려주세요.`
+    claudePrompt = `면접관이 꼬리질문을 했습니다: "${followUpQ}"\n\n사용자가 모범답변을 요청했습니다. 이 질문에 대한 모범답변을 상세하게 설명해주세요.`
+  } else {
+    userMessage = rawMessage
+  }
 
   // 세션이 없으면 새로 생성 (첫 답변)
   if (!msg.sessionId) {
     const questionText = msg.questionText ?? ''
     const systemPrompt = getPromptForAgent(agent, msg.interviewType)
-    const prompt = isSkip
-      ? `면접 질문: "${questionText}"\n\n사용자가 이 질문에 답변하지 못했습니다. 핵심 개념을 쉽게 설명해주고, 이해를 확인하는 질문을 해주세요.`
-      : `면접 질문: "${questionText}"\n\n사용자의 답변: ${userMessage}\n\n위 답변을 평가해주세요.`
+    const prompt = claudePrompt
+      ?? `면접 질문: "${questionText}"\n\n사용자의 답변: ${userMessage}\n\n위 답변을 평가해주세요.`
 
     ws.send(JSON.stringify({ type: 'chat:typing', agent }))
 
@@ -223,14 +244,14 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
 
   // user 메시지 저장
   const now = new Date().toISOString()
-  const userMsg: MessageEntry = { id: uuid(), role: isSkip ? 'skip' : 'user', text: isSkip ? '모르겠다' : (msg.message ?? ''), timestamp: now }
+  const msgRole = isSkip ? 'skip' : isExplain ? 'system' : 'user'
+  const msgText = isSkip ? '모르겠다' : isExplain ? '모범답변 요청' : userMessage
+  const userMsg: MessageEntry = { id: uuid(), role: msgRole, text: msgText, timestamp: now }
   appendMessage(session, userMsg)
 
   ws.send(JSON.stringify({ type: 'chat:typing', agent }))
 
-  const resumePrompt = isSkip
-    ? '사용자가 이 질문에 답변하지 못했습니다. 핵심 개념을 쉽게 설명해주고, 이해를 확인하는 질문을 해주세요.'
-    : (msg.message ?? '')
+  const resumePrompt = claudePrompt ?? userMessage
   const response = await resumeSession(session.claudeSessionId, resumePrompt)
 
   // assistant 메시지 저장

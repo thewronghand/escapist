@@ -30,6 +30,7 @@ interface LearnPageProps {
     startChat: (questionId: string, questionText: string) => void
     loadSession: (id: string) => void
     sendMessage: (text: string, agentOverride?: AgentId) => void
+    addLocalMessage: (msg: ChatMessage) => void
     activeQuestion: { id: string; text: string } | null
   }
   sessions: SessionSummary[]
@@ -48,6 +49,7 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
   const [treeOpen, setTreeOpen] = useState(false)
   const [treeRoot, setTreeRoot] = useState<FollowUpNode | null>(null)
   const [currentTreeNodeId, setCurrentTreeNodeId] = useState<string>('root')
+  const [pendingFollowUp, setPendingFollowUp] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -95,7 +97,13 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
   }
 
   const handleSend = (text: string) => {
-    chat.sendMessage(text)
+    if (pendingFollowUp) {
+      // 꼬리질문에 대한 답변 — 프롬프트에 컨텍스트 포함
+      chat.sendMessage(`__FOLLOWUP_ANSWER__${pendingFollowUp}__SEP__${text}`)
+      setPendingFollowUp(null)
+    } else {
+      chat.sendMessage(text)
+    }
     setFollowUps([])
   }
 
@@ -127,7 +135,26 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
       setCurrentTreeNodeId(newNodeId)
     }
 
-    chat.sendMessage(question)
+    // 면접관 메시지로 로컬 추가 (Claude 호출 없음, 답변 대기)
+    chat.addLocalMessage({
+      id: crypto.randomUUID(),
+      role: 'interviewer',
+      text: question,
+      timestamp: new Date().toISOString(),
+    })
+    setPendingFollowUp(question)
+    setFollowUps([])
+  }
+
+  const handleFollowUpExplain = (question: string) => {
+    // 면접관 메시지로 표시 + 모범답변 즉시 요청
+    chat.addLocalMessage({
+      id: crypto.randomUUID(),
+      role: 'interviewer',
+      text: question,
+      timestamp: new Date().toISOString(),
+    })
+    chat.sendMessage(`__EXPLAIN__${question}`)
     setFollowUps([])
   }
 
@@ -279,7 +306,7 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
             {chat.messages.map(renderMessage)}
             {chat.typing && <TypingIndicator agent={agentInfo?.name} />}
             {followUps.length > 0 && !chat.typing && (
-              <FollowUpButtons questions={followUps} onSelect={handleFollowUp} />
+              <FollowUpButtons questions={followUps} onSelect={handleFollowUp} onExplain={handleFollowUpExplain} />
             )}
           </div>
         </div>

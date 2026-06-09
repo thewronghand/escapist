@@ -67,13 +67,24 @@ export function useChat() {
 
   const sendMessage = useCallback((text: string, agentOverride?: AgentId) => {
     const isSkip = text === '__SKIP__'
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: isSkip ? 'system' : 'user',
-      text: isSkip ? '모르겠다' : text,
-      timestamp: new Date().toISOString(),
+    const isExplain = text.startsWith('__EXPLAIN__')
+    const isFollowUpAnswer = text.startsWith('__FOLLOWUP_ANSWER__')
+
+    // 로컬 메시지 — 특수 명령은 표시 방식 변경
+    if (!isExplain) {
+      let displayText = text
+      let role: ChatMessage['role'] = 'user'
+      if (isSkip) { displayText = '모르겠다'; role = 'skip' }
+      else if (isFollowUpAnswer) { displayText = text.split('__SEP__')[1] ?? ''; role = 'user' }
+
+      const userMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role,
+        text: displayText,
+        timestamp: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, userMsg])
     }
-    setMessages((prev) => [...prev, userMsg])
 
     const effectiveAgent = agentOverride ?? agent
 
@@ -95,6 +106,10 @@ export function useChat() {
     }
   }, [sessionId, agent])
 
+  const addLocalMessage = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => [...prev, msg])
+  }, [])
+
   const activeQuestion = questionRef.current
 
   return {
@@ -106,6 +121,7 @@ export function useChat() {
     startChat,
     loadSession,
     sendMessage,
+    addLocalMessage,
     activeQuestion,
   }
 }
