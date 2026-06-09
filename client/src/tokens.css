@@ -216,55 +216,45 @@ input, textarea, select { font-family: inherit; font-feature-settings: var(--fea
 
 /* ─── View Transitions (라우트 전환) ─── */
 
-/* 데스크톱: 수직 슬라이드 (push up/down) */
-::view-transition-old(root) {
-  animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-up;
-}
+/* root는 트랜지션 없음 (헤더/사이드바 고정) */
+::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-up;
+  animation: none;
 }
 
-@keyframes vt-slide-out-up {
+/* 데스크톱: 컨텐츠만 페이드 + 슬라이드 */
+::view-transition-old(content) {
+  animation: 250ms cubic-bezier(0.4, 0, 0.2, 1) both vt-fade-slide-out;
+}
+::view-transition-new(content) {
+  animation: 250ms cubic-bezier(0.4, 0, 0.2, 1) both vt-fade-slide-in;
+}
+
+@keyframes vt-fade-slide-out {
   from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 0; transform: translateY(-6px); }
 }
-@keyframes vt-slide-in-up {
-  from { opacity: 0; transform: translateY(100%); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes vt-slide-out-down {
-  from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(100%); }
-}
-@keyframes vt-slide-in-down {
-  from { opacity: 0; transform: translateY(-100%); }
+@keyframes vt-fade-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 모바일 (<640px): 가로 슬라이드 */
+/* 모바일 (<640px): 컨텐츠 가로 슬라이드 */
 @media (max-width: 639px) {
-  ::view-transition-old(root) {
-    animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-left;
+  ::view-transition-old(content) {
+    animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-left;
   }
-  ::view-transition-new(root) {
-    animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-right;
+  ::view-transition-new(content) {
+    animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-right;
   }
 }
 
 @keyframes vt-slide-out-left {
   from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(-100%); }
+  to   { opacity: 0; transform: translateX(-30px); }
 }
 @keyframes vt-slide-in-right {
-  from { opacity: 0; transform: translateX(100%); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes vt-slide-out-right {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(100%); }
-}
-@keyframes vt-slide-in-left {
-  from { opacity: 0; transform: translateX(-100%); }
+  from { opacity: 0; transform: translateX(30px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 

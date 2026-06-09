@@ -21,7 +21,7 @@ export function AppShell({ activeNav, onNavigate, onSettings, sidebar, children 
           <NavRail active={activeNav} onNavigate={onNavigate} />
         </div>
         {sidebar}
-        <main className="flex-1 min-h-0 overflow-auto">
+        <main className="flex-1 min-h-0 overflow-auto" style={{ viewTransitionName: 'content' }}>
           {children}
         </main>
       </div>
