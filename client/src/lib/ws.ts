@@ -2,6 +2,7 @@ type MessageHandler = (data: Record<string, unknown>) => void
 
 let socket: WebSocket | null = null
 let handlers: MessageHandler[] = []
+let onOpenCallbacks: (() => void)[] = []
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
 function getWsUrl(): string {
@@ -20,6 +21,10 @@ export function connect() {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
+    // 연결 대기 중이던 콜백 실행
+    const cbs = [...onOpenCallbacks]
+    onOpenCallbacks = []
+    cbs.forEach((cb) => cb())
   }
 
   socket.onmessage = (event) => {
@@ -39,7 +44,11 @@ export function connect() {
 
 export function send(data: Record<string, unknown>) {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
-    console.warn('[WS] not connected')
+    // 연결 안 됐으면 큐에 넣고 연결 후 전송
+    onOpenCallbacks.push(() => {
+      socket?.send(JSON.stringify(data))
+    })
+    connect()
     return
   }
   socket.send(JSON.stringify(data))
