@@ -68,7 +68,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     <div className="max-w-[1080px] mx-auto px-10 pt-10 pb-16 overflow-auto h-full">
 
       {/* ─── 상단: 핵심 지표 + 행동 ─── */}
-      <div className="flex items-center gap-6 mb-12">
+      <div className="esc-noise flex items-center gap-6 mb-12 bg-surface border border-hairline rounded-xl px-6 py-5">
         <ScoreRing score={stats.avgScore} size={88} label="평균" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-3 mb-1">

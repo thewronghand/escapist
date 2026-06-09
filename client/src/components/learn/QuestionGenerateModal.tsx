@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { CategoryTag } from '@/components/ui/CategoryTag'
 import { useQuestionGenerator } from '@/hooks/useQuestionGenerator'
+import { useToast } from '@/components/ui/Toast'
 
 interface QuestionGenerateModalProps {
   open: boolean
@@ -12,7 +13,8 @@ interface QuestionGenerateModalProps {
 }
 
 export function QuestionGenerateModal({ open, onClose, onSaved }: QuestionGenerateModalProps) {
-  const { generating, generatedQuestions, generate, saveQuestion, saveAll, clear } = useQuestionGenerator()
+  const { generating, generatedQuestions, error, generate, saveQuestion, saveAll, clear } = useQuestionGenerator()
+  const { toast } = useToast()
   const [type, setType] = useState<'technical' | 'behavioral' | 'both'>('both')
   const [count, setCount] = useState(5)
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set())
@@ -23,15 +25,25 @@ export function QuestionGenerateModal({ open, onClose, onSaved }: QuestionGenera
   }
 
   const handleSaveOne = async (idx: number) => {
-    const q = generatedQuestions[idx]
-    await saveQuestion(q)
-    setSavedIds((prev) => new Set(prev).add(idx))
+    try {
+      const q = generatedQuestions[idx]
+      await saveQuestion(q)
+      setSavedIds((prev) => new Set(prev).add(idx))
+      toast('질문이 저장되었습니다', 'success')
+    } catch {
+      toast('질문 저장에 실패했습니다', 'error')
+    }
   }
 
   const handleSaveAll = async () => {
-    await saveAll()
-    setSavedIds(new Set(generatedQuestions.map((_, i) => i)))
-    onSaved()
+    try {
+      await saveAll()
+      setSavedIds(new Set(generatedQuestions.map((_, i) => i)))
+      toast(`${generatedQuestions.length}개 질문이 저장되었습니다`, 'success')
+      onSaved()
+    } catch {
+      toast('일부 질문 저장에 실패했습니다', 'error')
+    }
   }
 
   const handleClose = () => {
@@ -94,6 +106,13 @@ export function QuestionGenerateModal({ open, onClose, onSaved }: QuestionGenera
           >
             {generating ? '생성 중...' : '질문 생성하기'}
           </Button>
+
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent-red-soft">
+              <Icon name="x" size={14} stroke="var(--accent-red)" />
+              <span className="text-accent-red text-[13px]">{error}</span>
+            </div>
+          )}
 
           {generating && (
             <div className="flex items-center justify-center gap-2 py-4">
