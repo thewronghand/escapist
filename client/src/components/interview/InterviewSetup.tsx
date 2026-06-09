@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { InterviewSettings } from '@/hooks/useInterview'
 import { Button } from '@/components/ui/Button'
 import { Segmented } from '@/components/ui/Segmented'
-import { CATEGORIES } from '@/types'
+import { CategoryPicker } from '@/components/ui/CategoryPicker'
 
 interface InterviewSetupProps {
   onStart: (settings: InterviewSettings) => void
@@ -15,12 +15,6 @@ export function InterviewSetup({ onStart }: InterviewSetupProps) {
   const [diffMax, setDiffMax] = useState(5)
   const [timeLimit, setTimeLimit] = useState<number | null>(null)
   const [strategy, setStrategy] = useState<'random' | 'weak-first' | 'unlearned-first'>('random')
-
-  const toggleCategory = (cat: string) => {
-    setCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
-    )
-  }
 
   const handleStart = () => {
     onStart({
@@ -46,21 +40,7 @@ export function InterviewSetup({ onStart }: InterviewSetupProps) {
         {/* 카테고리 */}
         <div>
           <label className="text-[13px] text-mute mb-2 block">카테고리</label>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => toggleCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-[12px] border transition-colors ${
-                  categories.includes(cat) || categories.length === 0
-                    ? 'border-hairline-strong bg-surface-elevated text-ink'
-                    : 'border-hairline text-stone hover:text-mute'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          <CategoryPicker selected={categories} onChange={setCategories} />
           <p className="text-[11px] text-stone mt-1">선택하지 않으면 전체 카테고리에서 출제</p>
         </div>
 

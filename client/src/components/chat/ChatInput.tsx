@@ -58,10 +58,7 @@ export function ChatInput({ onSend, onSkip, disabled, hintSlot, agent, onAgentCh
   }
 
   return (
-    <div
-      className="border-t border-hairline px-4 py-3"
-      style={{ background: 'rgba(7,8,10,0.85)', backdropFilter: 'blur(8px)' }}
-    >
+    <div className="border-t border-hairline px-4 py-3 bg-canvas/85 backdrop-blur-md">
       <div className="max-w-[820px] mx-auto">
         <textarea
           ref={textareaRef}

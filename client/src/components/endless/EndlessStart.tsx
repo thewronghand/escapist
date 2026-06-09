@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
-import { CATEGORIES } from '@/types'
+import { CategoryPicker } from '@/components/ui/CategoryPicker'
 
 interface EndlessSettings {
   categories: string[]
@@ -17,11 +17,6 @@ export function EndlessStart({ bestStreak, onStart }: EndlessStartProps) {
   const [categories, setCategories] = useState<string[]>([])
   const [threshold, setThreshold] = useState(4)
 
-  const toggleCategory = (cat: string) => {
-    setCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
-    )
-  }
 
   return (
     <div className="max-w-[640px] mx-auto px-6 py-8">
@@ -60,21 +55,7 @@ export function EndlessStart({ bestStreak, onStart }: EndlessStartProps) {
       {/* 카테고리 */}
       <div className="mb-6">
         <label className="text-[13px] text-mute mb-2 block">카테고리</label>
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => toggleCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-[12px] border transition-colors ${
-                categories.includes(cat) || categories.length === 0
-                  ? 'border-hairline-strong bg-surface-elevated text-ink'
-                  : 'border-hairline text-stone hover:text-mute'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        <CategoryPicker selected={categories} onChange={setCategories} />
       </div>
 
       {/* 게임오버 기준 */}

@@ -46,4 +46,13 @@
 
   /* font */
   --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
+
+  /* animations (from tokens.css keyframes) */
+  --animate-esc-pop: esc-pop 0.4s ease both;
+  --animate-esc-rise: esc-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-esc-rise-sm: esc-rise-sm 0.2s ease both;
+  --animate-esc-shake: esc-shake 0.4s ease;
+  --animate-esc-streak-bump: esc-streak-bump 0.4s ease;
+  --animate-esc-slide-left: esc-slide-left 0.25s ease both;
+  --animate-esc-slide-right: esc-slide-right 0.25s ease both;
 }
