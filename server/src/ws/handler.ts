@@ -41,6 +41,10 @@ interface ClientMessage {
   agent?: string
   hintLevel?: number
   sandboxId?: string
+  // 면접/무한 채점용
+  questionForEval?: string
+  answerForEval?: string
+  interviewData?: Record<string, unknown>
 }
 
 function appendMessage(session: Session, msg: MessageEntry): Session {
@@ -78,6 +82,15 @@ export function handleWsConnection(ws: WebSocket) {
           break
         case 'sandbox:send':
           await handleSandboxSend(ws, msg)
+          break
+        case 'interview:eval':
+          await handleInterviewEval(ws, msg)
+          break
+        case 'interview:summary':
+          await handleInterviewSummary(ws, msg)
+          break
+        case 'interview:save':
+          await handleInterviewSave(ws, msg)
           break
         default:
           ws.send(JSON.stringify({ type: 'chat:error', error: `Unknown type: ${msg.type}` }))
@@ -318,4 +331,62 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
     type: 'sandbox:response',
     message: { id: uuid(), text: response.result, timestamp: new Date().toISOString() },
   }))
+}
+
+const EVAL_PROMPT = `당신은 면접 채점관입니다. 질문과 답변을 받아 빠르게 채점합니다.
+
+반드시 아래 JSON 형식으로만 응답하세요.
+{
+  "score": 7,
+  "feedback": "한 줄 피드백",
+  "modelAnswer": "모범답안 2~3문장 요약"
+}`
+
+async function handleInterviewEval(ws: WebSocket, msg: ClientMessage) {
+  const question = msg.questionForEval ?? ''
+  const answer = msg.answerForEval ?? ''
+
+  ws.send(JSON.stringify({ type: 'interview:evaluating' }))
+
+  const prompt = `질문: "${question}"\n답변: "${answer}"\n\n채점해주세요.`
+  const response = await startSession(prompt, EVAL_PROMPT)
+
+  ws.send(JSON.stringify({
+    type: 'interview:evalResult',
+    result: response.result,
+  }))
+}
+
+async function handleInterviewSummary(ws: WebSocket, msg: ClientMessage) {
+  ws.send(JSON.stringify({ type: 'interview:summarizing' }))
+
+  const data = msg.interviewData ?? {}
+  const prompt = `면접 결과를 종합 평가해주세요.\n\n${JSON.stringify(data, null, 2)}\n\n3~4문장으로 총평을 작성해주세요. JSON이 아닌 일반 텍스트로 응답하세요.`
+
+  const response = await startSession(prompt, EVAL_PROMPT)
+
+  ws.send(JSON.stringify({
+    type: 'interview:summaryResult',
+    result: response.result,
+  }))
+}
+
+async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
+  const data = msg.interviewData as Record<string, unknown> | undefined
+  if (!data) return
+
+  const id = `iv_${uuid().slice(0, 8)}`
+  const session: Session = {
+    id,
+    claudeSessionId: '',
+    questionId: '',
+    questionText: '',
+    mode: data.mode as string ?? 'interview',
+    agent: 'interviewer',
+    createdAt: new Date().toISOString(),
+    ...data,
+  }
+  await writeOne('sessions', id, session)
+
+  ws.send(JSON.stringify({ type: 'interview:saved', id }))
 }

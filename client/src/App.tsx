@@ -42,7 +42,7 @@ function App() {
       onNavigate={setActiveNav}
       sidebar={activeNav === 'learn' ? learnSidebar : undefined}
     >
-      {activeNav === 'dashboard' && <DashboardPage />}
+      {activeNav === 'dashboard' && <DashboardPage onNavigate={setActiveNav} />}
       {activeNav === 'learn' && (
         <LearnPage
           chat={chat}
@@ -51,8 +51,8 @@ function App() {
           onSessionCreated={sessions.refresh}
         />
       )}
-      {activeNav === 'interview' && <InterviewPage />}
-      {activeNav === 'endless' && <EndlessPage />}
+      {activeNav === 'interview' && <InterviewPage onNavigate={setActiveNav} />}
+      {activeNav === 'endless' && <EndlessPage onNavigate={setActiveNav} />}
       <SandboxPanel />
     </AppShell>
   )
