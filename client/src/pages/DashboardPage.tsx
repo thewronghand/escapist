@@ -64,16 +64,21 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   return (
     <div className="max-w-[1180px] mx-auto px-10 py-8 overflow-auto">
       {/* 히어로 */}
-      <div className="relative overflow-hidden rounded-xl p-8 mb-8" style={{ minHeight: 160 }}>
-        <div className="esc-stripe-band" />
+      <div
+        className="relative overflow-hidden rounded-xl p-8 mb-8 border border-hairline"
+        style={{ minHeight: 160, background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)' }}
+      >
         <div className="relative flex items-center justify-between">
-          <div>
-            <img src="/logo-horizontal.svg" alt="Escapist" className="h-10 mb-3 opacity-90" />
-            <p className="text-mute text-[14px]">면접까지 함께 달려요</p>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="tertiary" icon="infinity" onClick={() => onNavigate?.('endless')}>무한 모드</Button>
-            <Button variant="primary" icon="mic" onClick={() => onNavigate?.('interview')}>오늘의 면접 시작</Button>
+          <img src="/logo-horizontal.svg" alt="Escapist" className="h-20" />
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-mute text-[13px] italic tracking-wide">"The only way out is through."</p>
+              <p className="text-ash text-[11px] mt-0.5">빠져나가는 유일한 길은 뚫고 지나가는 것.</p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="tertiary" icon="infinity" onClick={() => onNavigate?.('endless')}>무한 모드</Button>
+              <Button variant="primary" icon="mic" onClick={() => onNavigate?.('interview')}>오늘의 면접 시작</Button>
+            </div>
           </div>
         </div>
       </div>
