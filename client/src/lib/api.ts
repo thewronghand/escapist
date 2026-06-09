@@ -20,6 +20,7 @@ export function createQuestion(data: {
   category: string
   tags?: string[]
   difficulty?: number
+  interviewType?: string
 }): Promise<Question> {
   return request<Question>('/questions', {
     method: 'POST',

@@ -5,14 +5,15 @@ import { NavRail } from '@/components/layout/NavRail'
 interface AppShellProps {
   activeNav: string
   onNavigate: (id: string) => void
+  onSettings?: () => void
   sidebar?: ReactNode
   children: ReactNode
 }
 
-export function AppShell({ activeNav, onNavigate, sidebar, children }: AppShellProps) {
+export function AppShell({ activeNav, onNavigate, onSettings, sidebar, children }: AppShellProps) {
   return (
     <div className="h-screen flex flex-col bg-canvas text-body font-sans">
-      <Header />
+      <Header onSettings={onSettings} />
       <div className="flex flex-1 min-h-0">
         <NavRail active={activeNav} onNavigate={onNavigate} />
         {sidebar}

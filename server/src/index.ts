@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws'
 import { questionsRouter } from './routes/questions.js'
 import { statsRouter } from './routes/stats.js'
 import { sessionsRouter } from './routes/sessions.js'
+import { profileRouter } from './routes/profile.js'
 import { handleWsConnection } from './ws/handler.js'
 
 const app = express()
@@ -14,6 +15,7 @@ app.use(express.json())
 app.use('/api/questions', questionsRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/sessions', sessionsRouter)
+app.use('/api/profile', profileRouter)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })

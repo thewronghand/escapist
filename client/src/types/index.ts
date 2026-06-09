@@ -1,4 +1,4 @@
-export type InterviewType = 'technical' | 'behavioral'
+export type InterviewType = 'technical' | 'behavioral' | 'opinion'
 
 export interface Question {
   id: string
@@ -92,9 +92,14 @@ export const BEHAVIORAL_CATEGORIES = [
   '협업', '문제 해결', '경험', '동기', '성장', '리더십', '갈등 관리',
 ] as const
 
+export const OPINION_CATEGORIES = [
+  '기술 선택', '개발 철학', '협업 방식', '커리어', 'AI 활용',
+] as const
+
 export const CATEGORIES = [
   ...TECHNICAL_CATEGORIES,
   ...BEHAVIORAL_CATEGORIES,
+  ...OPINION_CATEGORIES,
 ] as const
 
 export const CAT_ACCENT: Record<string, string> = {
@@ -104,6 +109,18 @@ export const CAT_ACCENT: Record<string, string> = {
   '알고리즘': 'red', '운영체제': 'yellow', '데이터베이스': 'green',
   '협업': 'green', '문제 해결': 'red', '경험': 'blue',
   '동기': 'yellow', '성장': 'green', '리더십': 'purple', '갈등 관리': 'red',
+  '기술 선택': 'blue', '개발 철학': 'purple', '협업 방식': 'green',
+  '커리어': 'yellow', 'AI 활용': 'red',
 }
 
 export const BEHAVIORAL_CATEGORIES_SET = new Set<string>(BEHAVIORAL_CATEGORIES)
+export const OPINION_CATEGORIES_SET = new Set<string>(OPINION_CATEGORIES)
+
+export interface UserProfile {
+  jobRole: string
+  experienceLevel: string
+  techStack: string[]
+  interestStack: string[]
+  aiTools: string[]
+  memo: string
+}

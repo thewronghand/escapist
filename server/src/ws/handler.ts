@@ -1,8 +1,9 @@
 import type { WebSocket } from 'ws'
 import { v4 as uuid } from 'uuid'
 import { startSession, resumeSession } from '../claude/cli.js'
-import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, QUESTION_GENERATOR_PROMPT } from '../claude/prompts.js'
+import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, buildGeneratorPrompt, type ProfileData } from '../claude/prompts.js'
 import { readAll, readOne, writeOne } from '../data/store.js'
+import { db } from '../data/db.js'
 
 interface MessageEntry {
   id: string
@@ -463,23 +464,41 @@ async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
   ws.send(JSON.stringify({ type: 'interview:saved', id }))
 }
 
+function loadProfile(): ProfileData | null {
+  const row = db.prepare('SELECT * FROM user_profile WHERE id = 1').get() as Record<string, unknown> | undefined
+  if (!row) return null
+  return {
+    jobRole: row.job_role as string ?? 'frontend',
+    experienceLevel: row.experience_level as string ?? 'junior',
+    techStack: JSON.parse(row.tech_stack as string ?? '[]'),
+    interestStack: JSON.parse(row.interest_stack as string ?? '[]'),
+    aiTools: JSON.parse(row.ai_tools as string ?? '[]'),
+    memo: row.memo as string ?? '',
+  }
+}
+
 async function handleQuestionsGenerate(ws: WebSocket, msg: ClientMessage) {
-  const type = msg.generateType ?? 'both' // 'technical' | 'behavioral' | 'both'
+  const type = msg.generateType ?? 'both'
   const count = msg.generateCount ?? 5
 
   ws.send(JSON.stringify({ type: 'questions:generating' }))
 
+  const profile = loadProfile()
+  const systemPrompt = buildGeneratorPrompt(profile)
+
   let prompt: string
   if (type === 'technical') {
-    prompt = `프론트엔드 개발자 기술 면접에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요. 최신 트렌드를 반영하세요.`
+    prompt = `프론트엔드 개발자 기술 면접에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요.`
   } else if (type === 'behavioral') {
-    prompt = `개발자 인성 면접(behavioral interview)에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요. 한국 IT 기업 면접 트렌드를 반영하세요.`
+    prompt = `개발자 인성 면접 질문 ${count}개를 웹에서 검색해서 생성해주세요.`
+  } else if (type === 'opinion') {
+    prompt = `개발자 의견/철학 면접 질문 ${count}개를 생성해주세요. 기술 선택 이유, 도구 비교, AI 활용 등.`
   } else {
-    prompt = `프론트엔드 개발자 면접에서 자주 나오는 질문 ${count}개를 생성해주세요. 기술 질문과 인성 질문을 섞어주세요. 웹에서 최신 면접 트렌드를 검색해서 반영하세요.`
+    prompt = `프론트엔드 개발자 면접 질문 ${count}개를 생성해주세요. 기술, 인성, 의견 질문을 골고루 섞어주세요.`
   }
 
   try {
-    const response = await startSession(prompt, QUESTION_GENERATOR_PROMPT)
+    const response = await startSession(prompt, systemPrompt)
 
     ws.send(JSON.stringify({
       type: 'questions:generated',

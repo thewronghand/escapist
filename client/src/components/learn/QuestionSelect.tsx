@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { Question } from '@/types'
-import { CATEGORIES, BEHAVIORAL_CATEGORIES_SET } from '@/types'
+import { CATEGORIES, BEHAVIORAL_CATEGORIES_SET, OPINION_CATEGORIES_SET } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -27,8 +27,10 @@ export function QuestionSelect({ questions, onSelect, onAddNew, onAutoGenerate }
       if (statusFilter && q.status !== statusFilter) return false
       if (typeFilter) {
         const isBehavioral = BEHAVIORAL_CATEGORIES_SET.has(q.category)
-        if (typeFilter === 'technical' && isBehavioral) return false
+        const isOpinion = OPINION_CATEGORIES_SET.has(q.category)
+        if (typeFilter === 'technical' && (isBehavioral || isOpinion)) return false
         if (typeFilter === 'behavioral' && !isBehavioral) return false
+        if (typeFilter === 'opinion' && !isOpinion) return false
       }
       return true
     })
@@ -67,6 +69,7 @@ export function QuestionSelect({ questions, onSelect, onAddNew, onAutoGenerate }
             <option value="">전체 유형</option>
             <option value="technical">기술 면접</option>
             <option value="behavioral">인성 면접</option>
+            <option value="opinion">의견 면접</option>
           </select>
           <select
             value={categoryFilter}

@@ -46,7 +46,7 @@ export function useQuestionGenerator() {
     return unsub
   }, [])
 
-  const generate = useCallback((type: 'technical' | 'behavioral' | 'both', count = 5) => {
+  const generate = useCallback((type: 'technical' | 'behavioral' | 'opinion' | 'both', count = 5) => {
     setGeneratedQuestions([])
     setError(null)
     send({
@@ -62,6 +62,7 @@ export function useQuestionGenerator() {
       category: q.category,
       tags: q.tags,
       difficulty: q.difficulty,
+      interviewType: q.interviewType,
     })
   }, [])
 

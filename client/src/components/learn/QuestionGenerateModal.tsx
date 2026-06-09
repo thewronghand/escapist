@@ -15,7 +15,7 @@ interface QuestionGenerateModalProps {
 export function QuestionGenerateModal({ open, onClose, onSaved }: QuestionGenerateModalProps) {
   const { generating, generatedQuestions, error, generate, saveQuestion, saveAll, clear } = useQuestionGenerator()
   const { toast } = useToast()
-  const [type, setType] = useState<'technical' | 'behavioral' | 'both'>('both')
+  const [type, setType] = useState<'technical' | 'behavioral' | 'opinion' | 'both'>('both')
   const [count, setCount] = useState(5)
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set())
 
@@ -62,9 +62,10 @@ export function QuestionGenerateModal({ open, onClose, onSaved }: QuestionGenera
             <label className="text-[13px] text-mute mb-2 block">면접 유형</label>
             <div className="flex bg-surface-card rounded-md p-0.5 gap-0.5">
               {[
-                { value: 'both', label: '기술+인성' },
-                { value: 'technical', label: '기술 면접' },
-                { value: 'behavioral', label: '인성 면접' },
+                { value: 'both', label: '전체' },
+                { value: 'technical', label: '기술' },
+                { value: 'behavioral', label: '인성' },
+                { value: 'opinion', label: '의견' },
               ].map((opt) => (
                 <button
                   key={opt.value}

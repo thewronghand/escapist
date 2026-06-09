@@ -50,6 +50,18 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_mode ON sessions(mode);
   CREATE INDEX IF NOT EXISTS idx_sessions_question_id ON sessions(question_id);
+
+  CREATE TABLE IF NOT EXISTS user_profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    job_role TEXT DEFAULT 'frontend',
+    experience_level TEXT DEFAULT 'junior',
+    tech_stack TEXT DEFAULT '[]',
+    interest_stack TEXT DEFAULT '[]',
+    ai_tools TEXT DEFAULT '[]',
+    memo TEXT DEFAULT '',
+    updated_at TEXT
+  );
+  INSERT OR IGNORE INTO user_profile (id) VALUES (1);
 `)
 
 export { db }
