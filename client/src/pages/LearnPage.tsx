@@ -249,8 +249,8 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
   if (view === 'select') {
     return (
       <>
-        {/* 모바일 탭 — 세션/질문 전환 */}
-        <div className="sm:hidden flex border-b border-hairline">
+        {/* 탭 — 세션/질문 전환 */}
+        <div className="flex border-b border-hairline">
           <button
             onClick={() => setMobileTab('questions')}
             className={`flex-1 py-3 text-[13px] font-medium text-center transition-colors ${
@@ -269,9 +269,9 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
           </button>
         </div>
 
-        {/* 모바일 세션 목록 */}
+        {/* 세션 목록 */}
         {mobileTab === 'sessions' && (
-          <div className="sm:hidden flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto">
             <LearnSidebar
               sessions={sessions}
               activeSessionId={chat.sessionId}
@@ -282,7 +282,7 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
         )}
 
         {/* 질문 목록 (데스크톱은 항상, 모바일은 탭 선택 시) */}
-        <div className={mobileTab === 'sessions' ? 'hidden sm:block sm:flex-1' : 'flex-1'}>
+        <div className={mobileTab === 'sessions' ? 'hidden' : 'flex-1'}>
           <QuestionSelect
             questions={questions}
             onSelect={handleSelectQuestion}
