@@ -43,16 +43,18 @@ export interface Stats {
 export function useStats() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/api/stats')
-      if (res.ok) {
-        const data = await res.json() as Stats
-        setStats(data)
-      }
+      if (!res.ok) throw new Error(`${res.status}`)
+      const data = await res.json() as Stats
+      setStats(data)
     } catch (err) {
+      setError(err instanceof Error ? err.message : '통계를 불러올 수 없습니다')
       console.error('Failed to load stats:', err)
     } finally {
       setLoading(false)
@@ -61,5 +63,5 @@ export function useStats() {
 
   useEffect(() => { load() }, [load])
 
-  return { stats, loading, reload: load }
+  return { stats, loading, error, reload: load }
 }

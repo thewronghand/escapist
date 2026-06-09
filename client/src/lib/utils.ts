@@ -42,6 +42,16 @@ export function cn(...classes: (string | false | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ')
 }
 
+export function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return '방금'
+  if (mins < 60) return `${mins}분 전`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}시간 전`
+  return `${Math.floor(hrs / 24)}일 전`
+}
+
 /**
  * Claude 응답에서 JSON을 추출하고 파싱한다.
  * 마크다운 코드블록(```json ... ```)으로 감싸져 있어도 처리.
