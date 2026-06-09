@@ -634,3 +634,27 @@ Claude는 JSON으로 구조화된 응답을 반환:
 - [ ] 키보드 단축키
 - [ ] 에러 핸들링 + 빈 상태 UI
 - [ ] 반응형 (모바일 대응)
+
+### Phase 5 — 배포
+- [ ] Express에서 빌드된 정적 파일 서빙 (vite build → dist)
+- [ ] PM2 프로세스 관리 (재부팅 시 자동 시작)
+- [ ] Cloudflare Tunnel 설정 (외부 접근)
+- [ ] 맥북 에어 홈 서버 설정
+- [ ] 자동 배포 스크립트 (git pull → build → restart)
+
+---
+
+## 배포 전략
+
+Claude CLI가 서버에서 돌아야 하므로 클라우드 배포 불가. 홈 서버(맥북 에어) 기반.
+
+```
+모바일/외부 → Cloudflare Tunnel → 맥북 에어 → Express(:8888) + 빌드된 정적 파일
+                                                    ↕
+                                              Claude CLI + SQLite
+```
+
+- `vite build` → Express에서 정적 파일 서빙 (Vite dev 서버 불필요)
+- PM2로 프로세스 관리 (crash 시 자동 재시작, 재부팅 시 자동 시작)
+- `git pull && npm run build && pm2 restart`로 배포
+- 맥북 에어 뚜껑 닫아도 전원 연결 + 잠자기 방지 설정

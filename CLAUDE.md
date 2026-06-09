@@ -1,114 +1,233 @@
 # Escapist
 
-## 프로젝트 개요
 Claude CLI 세션 기반 면접 준비 앱. 질문 등록 → 답변 평가 → 꼬리질문으로 깊이를 파고드는 학습 도구.
 
-### 핵심 기능
-- 학습 모드: 질문 선택 → 답변 → Claude 면접관이 평가 + 꼬리질문
-- 힌트 시스템: 질문별 5단계 점진적 힌트 (튜터 에이전트)
-- 멀티 에이전트: 면접관, CS 튜터, 리서처, 다이어그래머
-- 샌드박스: 자유 질문 플로팅 채팅 패널
-- (예정) 오늘의 면접, 무한 모드, 대시보드
+> 기획서: `docs/PLAN.md` · 디자인 명세: `DESIGN.md` · 디자인 레퍼런스: `Escapist-design/` (.gitignore됨)
 
-### 기술 스택
-- **프론트**: React + Vite + TypeScript + Tailwind CSS v4
-- **서버**: Node.js + Express + WebSocket
-- **AI**: Claude CLI (`claude -p`, `--resume`)로 세션 관리
-- **데이터**: fs 기반 JSON (server/data/)
-- **디자인**: Raycast 기반 다크 테마 (tokens.css)
-- **마크다운**: react-markdown
+---
+
+## Critical Rules
+
+- **`any` 타입 금지** — `unknown` 또는 구체적 타입 사용
+- **import 경로는 절대 경로 `@/`** — 상대 경로 금지 (client 내)
+- **커밋 메시지는 제목 한 줄만** — body, Co-Authored-By 등 포함 금지
+- **main 브랜치에 직접 force push 금지**
+- **Claude 응답은 반드시 `parseClaudeJson()`으로 파싱** — JSON이 마크다운 코드블록으로 감싸져 올 수 있음
+- **서버 데이터는 SQLite** — fs JSON 직접 읽기/쓰기 금지 (store.ts 경유)
+- **Tailwind 클래스에서 디자인 토큰 사용** — 하드코딩 색상/간격 지양, `bg-canvas`, `text-ink`, `border-hairline` 등 사용
+
+---
+
+## 기술 스택
+
+| 영역 | 스택 |
+|------|------|
+| 프론트엔드 | React + Vite + TypeScript + Tailwind CSS v4 |
+| 서버 | Node.js + Express + WebSocket (ws) |
+| AI | Claude CLI (`claude -p`, `--resume`) via child_process |
+| DB | SQLite (better-sqlite3) — `server/data/escapist.db` |
+| 차트 | Recharts |
+| 다이어그램 | Mermaid.js + React Flow (@xyflow/react) |
+| 마크다운 | react-markdown |
+| 디자인 | Raycast 기반 다크 테마 (tokens.css → Tailwind @theme) |
+
+---
 
 ## 아키텍처
 
 ```
-[React 프론트엔드 :5180] ←WebSocket→ [Node 서버 :8888] ←child_process→ [Claude CLI]
-                                            ↕
-                                     [fs 기반 JSON]
+[React :5180] ←WebSocket→ [Express :8888] ←child_process→ [Claude CLI]
+                                ↕
+                        [SQLite escapist.db]
 ```
 
-- 프론트 → 서버: WebSocket으로 메시지 전송
-- 서버 → Claude CLI: `claude -p "..." --system-prompt "..." --output-format json`
-- 세션 이어가기: `claude --resume $SESSION_ID -p "..."`
-- Vite proxy: `/api` → 8888, `/ws` → ws://8888
+- **프론트 → 서버**: WebSocket으로 메시지 전송 (채팅, 힌트, 샌드박스, 채점)
+- **서버 → Claude CLI**: `claude -p "..." --system-prompt "..." --output-format json`
+- **세션 이어가기**: `claude --resume $SESSION_ID -p "..."`
+- **REST API**: `/api/questions` (CRUD), `/api/stats` (통계 집계)
+- **Vite proxy**: `/api` → :8888, `/ws` → ws://:8888
+
+### 레이어 의존 규칙
+
+```
+pages → components, hooks
+hooks → lib (ws.ts, api.ts, utils.ts)
+components → lib, types
+lib → (외부 의존성만)
+```
+
+- `hooks/` → WebSocket/REST 통신 담당, 상태 관리
+- `lib/` → 순수 유틸, 외부 통신 래퍼 (hooks 이외에서 직접 `send()` 호출 금지)
+- `components/` → UI만, 비즈니스 로직 최소화
+- `pages/` → hooks 조합 + 컴포넌트 배치
+
+---
 
 ## 주요 디렉토리
 
 ```
-client/
-  src/
-    components/
-      layout/       # AppShell, NavRail, Header, SidebarShell
-      ui/           # Button, Icon, Modal, ScoreRing, Markdown 등
-      chat/         # ChatBubble, ChatInput, EvaluationCard, HintPopover
-      learn/        # QuestionSelect, QuestionCard, QuestionFormModal
-      sandbox/      # SandboxPanel
-    hooks/          # useChat, useHints, useQuestions, useSandbox
-    lib/            # ws.ts, api.ts, utils.ts (parseClaudeJson, scoreColor)
-    pages/          # DashboardPage, LearnPage, InterviewPage, EndlessPage
-    types/          # 타입 정의, 에이전트/카테고리 상수
-    tokens.css      # Raycast 기반 디자인 토큰
-    index.css       # Tailwind @theme 연동
-server/
-  src/
-    claude/         # cli.ts (spawn/resume), prompts.ts (에이전트별 시스템 프롬프트)
-    data/           # store.ts (fs JSON 읽기/쓰기)
-    routes/         # questions.ts (CRUD API)
-    ws/             # handler.ts (WS 메시지 라우팅)
+client/src/
+  components/
+    layout/         # AppShell, NavRail, Header, SidebarShell
+    ui/             # Button, Icon, Modal, ScoreRing, Markdown, MermaidDiagram 등
+    chat/           # ChatBubble, ChatInput, EvaluationCard, HintPopover, AgentSelector, FollowUpTree
+    learn/          # QuestionSelect, QuestionCard, QuestionFormModal, QuestionGenerateModal, LearnSidebar
+    interview/      # InterviewSetup, InterviewProgress, InterviewResult
+    endless/        # EndlessStart, EndlessProgress, GameOverScreen
+    sandbox/        # SandboxPanel
+  hooks/            # useChat, useHints, useQuestions, useSessions, useInterview, useStats, useSandbox, useQuestionGenerator
+  lib/
+    ws.ts           # WebSocket 클라이언트 (connect, send, subscribe)
+    api.ts          # REST fetch 래퍼
+    utils.ts        # parseClaudeJson, scoreColor, gradeFor, cn
+  pages/            # DashboardPage, LearnPage, InterviewPage, EndlessPage
+  types/index.ts    # 타입 정의 + 상수 (AGENTS, CATEGORIES, CAT_ACCENT)
+  tokens.css        # 디자인 토큰 (CSS 변수)
+  index.css         # Tailwind @theme 연동
+
+server/src/
+  claude/
+    cli.ts          # startSession(), resumeSession() — Claude CLI spawn 래퍼
+    prompts.ts      # 에이전트별 시스템 프롬프트 (면접관, 인성면접관, 튜터, 리서처, 다이어그래머, 힌트, 샌드박스, 질문생성)
   data/
-    questions/      # {id}.json
-    sessions/       # {id}.json
-docs/
-  PLAN.md           # 전체 기획서
-DESIGN.md           # Raycast 디자인 시스템 명세
-Escapist-design/    # 디자인 레퍼런스 (JSX + 스크린샷, .gitignore됨)
+    db.ts           # SQLite 초기화 + 테이블 생성
+    store.ts        # readAll, readOne, writeOne, deleteOne (SQLite 기반, snake↔camel 자동 변환)
+  routes/
+    questions.ts    # GET/POST/PUT/DELETE /api/questions
+    stats.ts        # GET /api/stats (SQL 집계)
+  ws/
+    handler.ts      # WS 메시지 라우팅 (chat, session, hint, sandbox, interview, questions:generate)
+  data/
+    escapist.db     # SQLite DB 파일 (.gitignore됨)
 ```
+
+---
 
 ## 개발 환경
 
 ```bash
-npm run dev           # client(5180) + server(8888) 동시 실행
+npm run dev                     # client(:5180) + server(:8888) 동시 실행 (concurrently)
 ```
 
-### GitHub CLI 인증
-개인 계정(thewronghand)으로 push할 때:
+### 검증 명령어
+
 ```bash
-source .envrc && gh repo create ...
+# 클라이언트
+cd client && npx tsc --noEmit   # 타입 체크
+cd client && npm run build      # 프로덕션 빌드
+
+# 서버
+cd server && npx tsc --noEmit   # 타입 체크
+```
+
+**작업 완료 후 반드시 클라이언트 빌드 확인.** 서버는 타입 체크만 (빌드 스크립트 없음, tsx로 직접 실행).
+
+### GitHub CLI 인증
+
+개인 계정(thewronghand)으로 push:
+```bash
+source .envrc && git push
 source .envrc && gh pr create ...
 ```
 
-## 커밋/PR 규칙
-- 커밋 메시지는 제목만 작성 (본문 없이)
-- Co-Authored-By 등 자동 추가 문구 포함하지 말 것
+---
 
-## Claude 응답 파싱
-- Claude가 마크다운 코드블록(```json ```)으로 JSON을 감쌀 수 있음
-- `parseClaudeJson()` (lib/utils.ts)으로 코드블록 제거 후 파싱
-- 프론트 전체에서 마크다운 렌더링 (`Markdown` 컴포넌트)
+## Claude CLI 연동 주의사항
+
+### 응답 파싱
+- Claude는 `--output-format json`으로 호출해도 `result` 필드 안에 마크다운 코드블록(` ```json ... ``` `)으로 JSON을 감쌀 수 있음
+- **항상 `parseClaudeJson()` (client/src/lib/utils.ts) 사용** — 코드블록 제거 + JSON 추출 + fallback 처리
+- 프론트 전체에서 `Markdown` 컴포넌트로 마크다운 렌더링 (mermaid 코드블록은 자동으로 MermaidDiagram 렌더)
+
+### 세션 관리
+- `claude -p`로 만든 세션은 CLI 세션 피커(`/resume`)에 안 뜸 — 사용자의 작업 세션과 충돌 없음
+- 세션 데이터는 `~/.claude/projects/.../{sessionId}.jsonl`에 저장, 30일 후 자동 삭제
+- 서버의 `sessions` 테이블에 `claude_session_id`를 저장해서 `--resume`에 사용
+- 서버 재시작해도 DB의 세션 매핑은 유지됨, Claude CLI 세션도 파일 기반이라 유지
+
+### WS 메시지 프로토콜
+
+| Client → Server | 용도 |
+|----------------|------|
+| `chat:send` | 학습 채팅 (세션 없으면 자동 생성) |
+| `session:list` | 세션 목록 조회 |
+| `session:load` | 세션 + 메시지 이력 로드 |
+| `hint:request` / `hint:load` | 힌트 요청/로드 |
+| `sandbox:send` | 샌드박스 채팅 |
+| `interview:eval` | 단건 채점 (면접/무한) |
+| `interview:summary` | 면접 총평 생성 |
+| `interview:save` | 면접/무한 기록 저장 |
+| `questions:generate` | 질문 자동 생성 |
+
+---
+
+## 데이터 모델 (SQLite)
+
+### questions 테이블
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | TEXT PK | `q_` prefix |
+| question | TEXT | 질문 텍스트 |
+| category | TEXT | 카테고리 |
+| interview_type | TEXT | `'technical'` 또는 `'behavioral'` |
+| tags | TEXT (JSON) | 태그 배열 |
+| difficulty | INTEGER | 1~5 |
+| status | TEXT | `unlearned` / `learning` / `weak` / `master` |
+| best_score, average_score | REAL | 점수 |
+| attempts | INTEGER | 시도 횟수 |
+
+### sessions 테이블
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | TEXT PK | prefix로 모드 구분: `s_`(learn), `h_`/`hints_`(hint), `sb_`(sandbox), `iv_`(interview/endless) |
+| claude_session_id | TEXT | Claude CLI `--resume`용 |
+| mode | TEXT | `learn` / `hint` / `sandbox` / `interview` / `endless` |
+| messages | TEXT (JSON) | 채팅 메시지 배열 |
+| hints | TEXT (JSON) | 힌트 배열 |
+| total_score, grade, streak 등 | 면접/무한 기록용 |
+
+**JSON 필드는 store.ts에서 자동으로 직렬화/파싱됨.** camelCase ↔ snake_case도 자동 변환.
+
+---
+
+## Git 전략
+
+- 기본적으로 **main에서 직접 작업**
+- **대규모 변경이나 회귀 위험 있는 변경**은 서브 브랜치 따서 작업 후 main 머지
+- 커밋 메시지: 한국어, 제목 한 줄만
+- 기능 단위로 커밋
+
+```
+# 커밋 예시
+데이터 레이어 fs → SQLite 전환 (better-sqlite3)
+인성 면접 지원 + 질문 자동 생성
+Phase 3: 오늘의 면접, 무한 모드, 대시보드
+
+# 브랜치 예시 (대규모 변경 시)
+feat/sqlite-migration
+refactor/ws-protocol
+```
+
+---
+
+## 배포 계획
+
+로컬 맥북 에어를 홈 서버로 사용:
+
+```
+모바일/외부 → Cloudflare Tunnel → 맥북 에어 → Express(:8888) + 빌드된 정적 파일
+```
+
+- Claude CLI가 서버에서 돌아야 하므로 클라우드 배포 불가
+- `vite build` → Express에서 정적 파일 서빙
+- PM2로 프로세스 관리 (재부팅 시 자동 시작)
+- `git pull && npm run build && pm2 restart`로 배포
+
+---
 
 ## 디자인 레퍼런스
-- `Escapist-design/` 폴더에 JSX 레퍼런스 + 스크린샷 9장
-- 인라인 스타일 → Tailwind 클래스로 변환하여 구현
-- CSS 변수는 tokens.css에 정의, Tailwind @theme으로 매핑
 
-## 구현 상태
-
-### Phase 1 (완료)
-- [x] 프로젝트 초기화 (Vite + Express + WS)
-- [x] Claude CLI 연동 (spawn, resume, JSON 파싱)
-- [x] 질문 CRUD API + fs 저장
-- [x] 기본 채팅 UI + 학습 플로우
-- [x] 레이아웃 (NavRail + Sidebar + Main)
-- [x] 힌트 시스템 (5단계, 서버 저장)
-- [x] 샌드박스 (자유 질문 채팅)
-- [x] 마크다운 렌더링
-
-### Phase 2 (예정)
-- [ ] 세션 관리 (사이드바 목록, 이력 로딩, resume)
-- [ ] 꼬리질문 트리 시각화 (React Flow)
-- [ ] 에이전트 전환 UI (@튜터, @리서처, @다이어그램)
-- [ ] Mermaid 다이어그램 렌더링
-
-### Phase 3 (예정)
-- [ ] 오늘의 면접 (설정 → 진행 → 결과)
-- [ ] 무한 모드 (스트릭 + 게임오버)
-- [ ] 대시보드 (통계, 차트, Recharts)
+- `Escapist-design/` 폴더에 JSX 레퍼런스 + 스크린샷 9장 (.gitignore됨)
+- `tokens.css` — Raycast 기반 다크 테마 디자인 토큰
+- `index.css` — Tailwind @theme으로 CSS 변수를 Tailwind 클래스에 매핑
+- 새 컴포넌트 추가 시 레퍼런스 JSX 참고 → Tailwind 클래스로 변환
