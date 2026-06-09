@@ -486,15 +486,22 @@ async function handleQuestionsGenerate(ws: WebSocket, msg: ClientMessage) {
   const profile = loadProfile()
   const systemPrompt = buildGeneratorPrompt(profile)
 
+  // 기존 질문 목록 로드 → 중복 방지
+  const existingQuestions = db.prepare('SELECT question FROM questions').all() as Array<{ question: string }>
+  const existingList = existingQuestions.map((q) => q.question)
+  const dedupeClause = existingList.length > 0
+    ? `\n\n## 이미 등록된 질문 (중복 금지)\n${existingList.map((q) => `- ${q}`).join('\n')}\n\n위 질문과 동일하거나 매우 유사한 질문은 절대 생성하지 마세요.`
+    : ''
+
   let prompt: string
   if (type === 'technical') {
-    prompt = `프론트엔드 개발자 기술 면접에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요.`
+    prompt = `프론트엔드 개발자 기술 면접에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요.${dedupeClause}`
   } else if (type === 'behavioral') {
-    prompt = `개발자 인성 면접 질문 ${count}개를 웹에서 검색해서 생성해주세요.`
+    prompt = `개발자 인성 면접 질문 ${count}개를 웹에서 검색해서 생성해주세요.${dedupeClause}`
   } else if (type === 'opinion') {
-    prompt = `개발자 의견/철학 면접 질문 ${count}개를 생성해주세요. 기술 선택 이유, 도구 비교, AI 활용 등.`
+    prompt = `개발자 의견/철학 면접 질문 ${count}개를 생성해주세요. 기술 선택 이유, 도구 비교, AI 활용 등.${dedupeClause}`
   } else {
-    prompt = `프론트엔드 개발자 면접 질문 ${count}개를 생성해주세요. 기술, 인성, 의견 질문을 골고루 섞어주세요.`
+    prompt = `프론트엔드 개발자 면접 질문 ${count}개를 생성해주세요. 기술, 인성, 의견 질문을 골고루 섞어주세요.${dedupeClause}`
   }
 
   try {
