@@ -5,6 +5,7 @@ import { useQuestions } from '@/hooks/useQuestions'
 import { useHints } from '@/hooks/useHints'
 import { QuestionSelect } from '@/components/learn/QuestionSelect'
 import { QuestionFormModal } from '@/components/learn/QuestionFormModal'
+import { QuestionGenerateModal } from '@/components/learn/QuestionGenerateModal'
 import { ChatBubble } from '@/components/chat/ChatBubble'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { TypingIndicator } from '@/components/chat/TypingIndicator'
@@ -36,10 +37,11 @@ interface LearnPageProps {
 }
 
 export function LearnPage({ chat, view, setView, onSessionCreated }: LearnPageProps) {
-  const { questions, add } = useQuestions()
+  const { questions, add, reload: reloadQuestions } = useQuestions()
   const hints = useHints()
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [showGenerate, setShowGenerate] = useState(false)
   const [followUps, setFollowUps] = useState<string[]>([])
   const [treeOpen, setTreeOpen] = useState(false)
   const [treeRoot, setTreeRoot] = useState<FollowUpNode | null>(null)
@@ -171,11 +173,17 @@ export function LearnPage({ chat, view, setView, onSessionCreated }: LearnPagePr
           questions={questions}
           onSelect={handleSelectQuestion}
           onAddNew={() => setShowForm(true)}
+          onAutoGenerate={() => setShowGenerate(true)}
         />
         <QuestionFormModal
           open={showForm}
           onClose={() => setShowForm(false)}
           onSubmit={(data) => add(data)}
+        />
+        <QuestionGenerateModal
+          open={showGenerate}
+          onClose={() => setShowGenerate(false)}
+          onSaved={reloadQuestions}
         />
       </>
     )

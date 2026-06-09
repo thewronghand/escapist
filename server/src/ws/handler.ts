@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws'
 import { v4 as uuid } from 'uuid'
 import { startSession, resumeSession } from '../claude/cli.js'
-import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT } from '../claude/prompts.js'
+import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, QUESTION_GENERATOR_PROMPT } from '../claude/prompts.js'
 import { readAll, readOne, writeOne } from '../data/store.js'
 
 interface MessageEntry {
@@ -45,6 +45,10 @@ interface ClientMessage {
   questionForEval?: string
   answerForEval?: string
   interviewData?: Record<string, unknown>
+  interviewType?: string
+  // 질문 자동 생성용
+  generateType?: string
+  generateCount?: number
 }
 
 function appendMessage(session: Session, msg: MessageEntry): Session {
@@ -92,6 +96,9 @@ export function handleWsConnection(ws: WebSocket) {
         case 'interview:save':
           await handleInterviewSave(ws, msg)
           break
+        case 'questions:generate':
+          await handleQuestionsGenerate(ws, msg)
+          break
         default:
           ws.send(JSON.stringify({ type: 'chat:error', error: `Unknown type: ${msg.type}` }))
       }
@@ -108,7 +115,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
   // 세션이 없으면 새로 생성 (첫 답변)
   if (!msg.sessionId) {
     const questionText = msg.questionText ?? ''
-    const systemPrompt = getPromptForAgent(agent)
+    const systemPrompt = getPromptForAgent(agent, msg.interviewType)
     const prompt = `면접 질문: "${questionText}"\n\n사용자의 답변: ${msg.message ?? ''}\n\n위 답변을 평가해주세요.`
 
     ws.send(JSON.stringify({ type: 'chat:typing', agent }))
@@ -389,4 +396,32 @@ async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
   await writeOne('sessions', id, session)
 
   ws.send(JSON.stringify({ type: 'interview:saved', id }))
+}
+
+async function handleQuestionsGenerate(ws: WebSocket, msg: ClientMessage) {
+  const type = msg.generateType ?? 'both' // 'technical' | 'behavioral' | 'both'
+  const count = msg.generateCount ?? 5
+
+  ws.send(JSON.stringify({ type: 'questions:generating' }))
+
+  let prompt: string
+  if (type === 'technical') {
+    prompt = `프론트엔드 개발자 기술 면접에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요. 최신 트렌드를 반영하세요.`
+  } else if (type === 'behavioral') {
+    prompt = `개발자 인성 면접(behavioral interview)에서 자주 나오는 질문 ${count}개를 웹에서 검색해서 생성해주세요. 한국 IT 기업 면접 트렌드를 반영하세요.`
+  } else {
+    prompt = `프론트엔드 개발자 면접에서 자주 나오는 질문 ${count}개를 생성해주세요. 기술 질문과 인성 질문을 섞어주세요. 웹에서 최신 면접 트렌드를 검색해서 반영하세요.`
+  }
+
+  try {
+    const response = await startSession(prompt, QUESTION_GENERATOR_PROMPT)
+
+    ws.send(JSON.stringify({
+      type: 'questions:generated',
+      result: response.result,
+    }))
+  } catch (err) {
+    const error = err instanceof Error ? err.message : 'Generation failed'
+    ws.send(JSON.stringify({ type: 'chat:error', error }))
+  }
 }

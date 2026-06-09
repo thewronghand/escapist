@@ -1,7 +1,10 @@
+export type InterviewType = 'technical' | 'behavioral'
+
 export interface Question {
   id: string
   question: string
   category: string
+  interviewType: InterviewType
   tags: string[]
   difficulty: number
   status: 'unlearned' | 'learning' | 'weak' | 'master'
@@ -79,10 +82,19 @@ export const AGENTS: Agent[] = [
   { id: 'diagrammer', name: '다이어그래머', accent: 'purple', icon: 'diagram', description: '개념 시각화' },
 ]
 
-export const CATEGORIES = [
+export const TECHNICAL_CATEGORIES = [
   'JavaScript', 'TypeScript', 'React', 'CSS', 'HTML',
   '네트워크', '브라우저', 'CS 기초', '자료구조',
   '알고리즘', '운영체제', '데이터베이스',
+] as const
+
+export const BEHAVIORAL_CATEGORIES = [
+  '협업', '문제 해결', '경험', '동기', '성장', '리더십', '갈등 관리',
+] as const
+
+export const CATEGORIES = [
+  ...TECHNICAL_CATEGORIES,
+  ...BEHAVIORAL_CATEGORIES,
 ] as const
 
 export const CAT_ACCENT: Record<string, string> = {
@@ -90,4 +102,8 @@ export const CAT_ACCENT: Record<string, string> = {
   CSS: 'purple', HTML: 'red', '네트워크': 'green',
   '브라우저': 'green', 'CS 기초': 'purple', '자료구조': 'blue',
   '알고리즘': 'red', '운영체제': 'yellow', '데이터베이스': 'green',
+  '협업': 'green', '문제 해결': 'red', '경험': 'blue',
+  '동기': 'yellow', '성장': 'green', '리더십': 'purple', '갈등 관리': 'red',
 }
+
+export const BEHAVIORAL_CATEGORIES_SET = new Set<string>(BEHAVIORAL_CATEGORIES)

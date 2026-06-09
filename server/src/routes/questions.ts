@@ -6,6 +6,7 @@ interface Question {
   id: string
   question: string
   category: string
+  interviewType: string
   tags: string[]
   difficulty: number
   status: 'unlearned' | 'learning' | 'weak' | 'master'
@@ -33,7 +34,7 @@ questionsRouter.get('/:id', async (req, res) => {
 })
 
 questionsRouter.post('/', async (req, res) => {
-  const { question, category, tags = [], difficulty = 3 } = req.body
+  const { question, category, tags = [], difficulty = 3, interviewType = 'technical' } = req.body
   if (!question || !category) {
     res.status(400).json({ error: 'question and category are required' })
     return
@@ -44,6 +45,7 @@ questionsRouter.post('/', async (req, res) => {
     id,
     question,
     category,
+    interviewType,
     tags,
     difficulty,
     status: 'unlearned',
