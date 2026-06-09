@@ -66,10 +66,11 @@ export function useChat() {
   }, [])
 
   const sendMessage = useCallback((text: string, agentOverride?: AgentId) => {
+    const isSkip = text === '__SKIP__'
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
-      role: 'user',
-      text,
+      role: isSkip ? 'system' : 'user',
+      text: isSkip ? '모르겠다' : text,
       timestamp: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, userMsg])

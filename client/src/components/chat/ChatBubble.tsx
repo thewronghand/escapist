@@ -2,6 +2,7 @@ import type { ChatMessage } from '@/types'
 import { AGENTS } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Markdown } from '@/components/ui/Markdown'
+import { Icon } from '@/components/ui/Icon'
 
 interface ChatBubbleProps {
   message: ChatMessage
@@ -9,7 +10,20 @@ interface ChatBubbleProps {
 
 export function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === 'user'
+  const isSkip = message.role === 'system' || message.role === 'skip'
   const agent = AGENTS.find((a) => a.id === message.role)
+
+  // 모르겠다 (skip)
+  if (isSkip) {
+    return (
+      <div className="flex flex-col items-end" style={{ animation: 'esc-slide-left 0.3s ease both' }}>
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-red-soft border border-accent-red/20">
+          <Icon name="x" size={14} stroke="var(--accent-red)" />
+          <span className="text-accent-red text-[13px] font-medium">모르겠다</span>
+        </div>
+      </div>
+    )
+  }
 
   if (isUser) {
     return (

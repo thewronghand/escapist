@@ -634,6 +634,10 @@ Claude는 JSON으로 구조화된 응답을 반환:
 - [ ] 키보드 단축키
 - [ ] 에러 핸들링 + 빈 상태 UI
 - [ ] 반응형 (모바일 대응)
+- [ ] 사용자 프로필 설정 (사용 스택, 관심 스택, AI 도구, 경력)
+- [ ] 의견 질문 유형 (`opinion`) — "왜 React를 선택했나", "CSS-in-JS vs Tailwind" 등
+- [ ] 프로필 기반 맞춤 질문 생성 (프로필 정보 + 웹서치로 맥락 있는 질문)
+- [ ] interviewType 3분류: technical / behavioral / opinion
 
 ### Phase 5 — 배포
 - [ ] Express에서 빌드된 정적 파일 서빙 (vite build → dist)

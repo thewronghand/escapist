@@ -100,7 +100,7 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
   }
 
   const handleSkip = () => {
-    chat.sendMessage('모르겠다')
+    chat.sendMessage('__SKIP__')
     setFollowUps([])
   }
 

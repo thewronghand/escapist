@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { MermaidDiagram } from '@/components/ui/MermaidDiagram'
 
 interface MarkdownProps {
@@ -10,6 +11,7 @@ export function Markdown({ children, className }: MarkdownProps) {
   return (
     <div className={className}>
     <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => <h1 className="text-ink text-[18px] font-semibold mt-4 mb-2">{children}</h1>,
         h2: ({ children }) => <h2 className="text-ink text-[16px] font-semibold mt-3 mb-1.5">{children}</h2>,

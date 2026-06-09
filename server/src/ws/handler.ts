@@ -161,12 +161,16 @@ export function handleWsConnection(ws: WebSocket) {
 
 async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
   const agent = msg.agent ?? 'interviewer'
+  const isSkip = msg.message === '__SKIP__'
+  const userMessage = isSkip ? '모르겠습니다. 이 질문에 대해 설명해주세요.' : (msg.message ?? '')
 
   // 세션이 없으면 새로 생성 (첫 답변)
   if (!msg.sessionId) {
     const questionText = msg.questionText ?? ''
     const systemPrompt = getPromptForAgent(agent, msg.interviewType)
-    const prompt = `면접 질문: "${questionText}"\n\n사용자의 답변: ${msg.message ?? ''}\n\n위 답변을 평가해주세요.`
+    const prompt = isSkip
+      ? `면접 질문: "${questionText}"\n\n사용자가 이 질문에 답변하지 못했습니다. 핵심 개념을 쉽게 설명해주고, 이해를 확인하는 질문을 해주세요.`
+      : `면접 질문: "${questionText}"\n\n사용자의 답변: ${userMessage}\n\n위 답변을 평가해주세요.`
 
     ws.send(JSON.stringify({ type: 'chat:typing', agent }))
 
@@ -176,7 +180,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
     const now = new Date().toISOString()
 
     // user 메시지 + assistant 메시지 저장
-    const userMsg: MessageEntry = { id: uuid(), role: 'user', text: msg.message ?? '', timestamp: now }
+    const userMsg: MessageEntry = { id: uuid(), role: isSkip ? 'skip' : 'user', text: isSkip ? '모르겠다' : (msg.message ?? ''), timestamp: now }
     const assistantMsg: MessageEntry = { id: uuid(), role: agent, agent, text: response.result, timestamp: now }
 
     const session: Session = {
@@ -218,12 +222,15 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
 
   // user 메시지 저장
   const now = new Date().toISOString()
-  const userMsg: MessageEntry = { id: uuid(), role: 'user', text: msg.message ?? '', timestamp: now }
+  const userMsg: MessageEntry = { id: uuid(), role: isSkip ? 'skip' : 'user', text: isSkip ? '모르겠다' : (msg.message ?? ''), timestamp: now }
   appendMessage(session, userMsg)
 
   ws.send(JSON.stringify({ type: 'chat:typing', agent }))
 
-  const response = await resumeSession(session.claudeSessionId, msg.message ?? '')
+  const resumePrompt = isSkip
+    ? '사용자가 이 질문에 답변하지 못했습니다. 핵심 개념을 쉽게 설명해주고, 이해를 확인하는 질문을 해주세요.'
+    : (msg.message ?? '')
+  const response = await resumeSession(session.claudeSessionId, resumePrompt)
 
   // assistant 메시지 저장
   const assistantMsg: MessageEntry = { id: uuid(), role: agent, agent, text: response.result, timestamp: now }

@@ -17,7 +17,7 @@ export interface Question {
 
 export interface ChatMessage {
   id: string
-  role: 'user' | 'interviewer' | 'tutor' | 'researcher' | 'diagrammer' | 'system'
+  role: 'user' | 'interviewer' | 'tutor' | 'researcher' | 'diagrammer' | 'system' | 'skip'
   text: string
   evaluation?: Evaluation
   diagram?: string
