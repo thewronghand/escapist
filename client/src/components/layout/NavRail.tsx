@@ -25,7 +25,7 @@ export function NavRail({ active, onNavigate }: NavRailProps) {
       {NAV_ITEMS.map((item) => (
         <button
           key={item.id}
-          onClick={() => onNavigate(item.id)}
+          onClick={() => { if (active !== item.id) onNavigate(item.id) }}
           className={cn(
             'w-[56px] h-[56px] rounded-lg flex flex-col items-center justify-center gap-1 transition-colors',
             active === item.id
