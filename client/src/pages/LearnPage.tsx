@@ -6,6 +6,7 @@ import { useHints } from '@/hooks/useHints'
 import { QuestionSelect } from '@/components/learn/QuestionSelect'
 import { QuestionFormModal } from '@/components/learn/QuestionFormModal'
 import { QuestionGenerateModal } from '@/components/learn/QuestionGenerateModal'
+import { LearnSidebar } from '@/components/learn/LearnSidebar'
 import { ChatBubble } from '@/components/chat/ChatBubble'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { TypingIndicator } from '@/components/chat/TypingIndicator'
@@ -45,6 +46,7 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [showGenerate, setShowGenerate] = useState(false)
+  const [mobileTab, setMobileTab] = useState<'questions' | 'sessions'>('questions')
   const [followUps, setFollowUps] = useState<string[]>([])
   const [treeOpen, setTreeOpen] = useState(false)
   const [treeRoot, setTreeRoot] = useState<FollowUpNode | null>(null)
@@ -239,15 +241,56 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
     return <ChatBubble key={msg.id} message={msg} />
   }
 
+  const handleSelectSession = (id: string) => {
+    chat.loadSession(id)
+    setView('session')
+  }
+
   if (view === 'select') {
     return (
       <>
-        <QuestionSelect
-          questions={questions}
-          onSelect={handleSelectQuestion}
-          onAddNew={() => setShowForm(true)}
-          onAutoGenerate={() => setShowGenerate(true)}
-        />
+        {/* 모바일 탭 — 세션/질문 전환 */}
+        <div className="sm:hidden flex border-b border-hairline">
+          <button
+            onClick={() => setMobileTab('questions')}
+            className={`flex-1 py-3 text-[13px] font-medium text-center transition-colors ${
+              mobileTab === 'questions' ? 'text-ink border-b-2 border-ink' : 'text-mute'
+            }`}
+          >
+            질문 목록
+          </button>
+          <button
+            onClick={() => setMobileTab('sessions')}
+            className={`flex-1 py-3 text-[13px] font-medium text-center transition-colors ${
+              mobileTab === 'sessions' ? 'text-ink border-b-2 border-ink' : 'text-mute'
+            }`}
+          >
+            세션 ({sessions.length})
+          </button>
+        </div>
+
+        {/* 모바일 세션 목록 */}
+        {mobileTab === 'sessions' && (
+          <div className="sm:hidden flex-1 overflow-auto">
+            <LearnSidebar
+              sessions={sessions}
+              activeSessionId={chat.sessionId}
+              onSelectSession={handleSelectSession}
+              onNewSession={() => setMobileTab('questions')}
+            />
+          </div>
+        )}
+
+        {/* 질문 목록 (데스크톱은 항상, 모바일은 탭 선택 시) */}
+        <div className={mobileTab === 'sessions' ? 'hidden sm:block sm:flex-1' : 'flex-1'}>
+          <QuestionSelect
+            questions={questions}
+            onSelect={handleSelectQuestion}
+            onAddNew={() => setShowForm(true)}
+            onAutoGenerate={() => setShowGenerate(true)}
+          />
+        </div>
+
         <QuestionFormModal
           open={showForm}
           onClose={() => setShowForm(false)}

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { useQuery } from '@tanstack/react-query'
@@ -49,7 +50,19 @@ export function RootLayout() {
     </SidebarShell>
   )
 
-  const showSidebar = activeNav === 'learn' && pathname !== '/settings'
+  // 사이드바 타이밍 — 라우트 전환 후 표시 (View Transitions와 동기화)
+  const shouldShowSidebar = activeNav === 'learn' && pathname !== '/settings'
+  const [showSidebar, setShowSidebar] = useState(shouldShowSidebar)
+
+  useEffect(() => {
+    if (shouldShowSidebar) {
+      // 라우트 전환 애니메이션 후 사이드바 표시
+      const timer = requestAnimationFrame(() => setShowSidebar(true))
+      return () => cancelAnimationFrame(timer)
+    } else {
+      setShowSidebar(false)
+    }
+  }, [shouldShowSidebar])
 
   return (
     <AppShell
