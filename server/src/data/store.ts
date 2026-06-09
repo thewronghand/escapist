@@ -1,50 +1,82 @@
-import fs from 'fs/promises'
-import path from 'path'
+import { db } from './db.js'
 
-const DATA_DIR = path.resolve(import.meta.dirname, '../../data')
-
-async function ensureDir(dir: string) {
-  await fs.mkdir(dir, { recursive: true })
+// JSON 필드를 파싱하는 헬퍼
+const JSON_FIELDS: Record<string, string[]> = {
+  questions: ['tags'],
+  sessions: ['messages', 'hints', 'categories'],
 }
 
-export async function readAll<T>(collection: string): Promise<T[]> {
-  const dir = path.join(DATA_DIR, collection)
-  await ensureDir(dir)
-  const files = await fs.readdir(dir)
-  const items: T[] = []
-  for (const file of files) {
-    if (!file.endsWith('.json')) continue
-    const raw = await fs.readFile(path.join(dir, file), 'utf-8')
-    items.push(JSON.parse(raw) as T)
+function parseRow<T>(collection: string, row: Record<string, unknown>): T {
+  const jsonFields = JSON_FIELDS[collection] ?? []
+  const parsed = { ...row }
+  for (const field of jsonFields) {
+    if (typeof parsed[field] === 'string') {
+      try {
+        parsed[field] = JSON.parse(parsed[field] as string)
+      } catch {
+        // 파싱 실패 시 원본 유지
+      }
+    }
   }
-  return items
+  // snake_case → camelCase 변환
+  return snakeToCamel(parsed) as T
 }
 
-export async function readOne<T>(collection: string, id: string): Promise<T | null> {
-  const filePath = path.join(DATA_DIR, collection, `${id}.json`)
-  try {
-    const raw = await fs.readFile(filePath, 'utf-8')
-    return JSON.parse(raw) as T
-  } catch {
-    return null
+function snakeToCamel(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+    result[camelKey] = val
   }
+  return result
 }
 
-export async function writeOne<T>(collection: string, id: string, data: T): Promise<void> {
-  const dir = path.join(DATA_DIR, collection)
-  await ensureDir(dir)
-  const filePath = path.join(dir, `${id}.json`)
-  const tmp = filePath + '.tmp'
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2), 'utf-8')
-  await fs.rename(tmp, filePath)
-}
-
-export async function deleteOne(collection: string, id: string): Promise<boolean> {
-  const filePath = path.join(DATA_DIR, collection, `${id}.json`)
-  try {
-    await fs.unlink(filePath)
-    return true
-  } catch {
-    return false
+function camelToSnake(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(obj)) {
+    const snakeKey = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
+    result[snakeKey] = val
   }
+  return result
+}
+
+function serializeForDb(collection: string, data: Record<string, unknown>): Record<string, unknown> {
+  const snake = camelToSnake(data)
+  const jsonFields = JSON_FIELDS[collection] ?? []
+  for (const field of jsonFields) {
+    if (snake[field] != null && typeof snake[field] !== 'string') {
+      snake[field] = JSON.stringify(snake[field])
+    }
+  }
+  return snake
+}
+
+export function readAll<T>(collection: string): T[] {
+  const rows = db.prepare(`SELECT * FROM ${collection}`).all() as Record<string, unknown>[]
+  return rows.map((row) => parseRow<T>(collection, row))
+}
+
+export function readOne<T>(collection: string, id: string): T | null {
+  const row = db.prepare(`SELECT * FROM ${collection} WHERE id = ?`).get(id) as Record<string, unknown> | undefined
+  if (!row) return null
+  return parseRow<T>(collection, row)
+}
+
+export function writeOne(collection: string, id: string, data: unknown): void {
+  const serialized = serializeForDb(collection, data as Record<string, unknown>)
+
+  // 존재하면 UPDATE, 없으면 INSERT (UPSERT)
+  const columns = Object.keys(serialized)
+  const placeholders = columns.map(() => '?').join(', ')
+  const updates = columns.map((c) => `${c} = excluded.${c}`).join(', ')
+
+  const sql = `INSERT INTO ${collection} (${columns.join(', ')}) VALUES (${placeholders})
+    ON CONFLICT(id) DO UPDATE SET ${updates}`
+
+  db.prepare(sql).run(...columns.map((c) => serialized[c] ?? null))
+}
+
+export function deleteOne(collection: string, id: string): boolean {
+  const result = db.prepare(`DELETE FROM ${collection} WHERE id = ?`).run(id)
+  return result.changes > 0
 }

@@ -1,111 +1,79 @@
 import { Router } from 'express'
-import { readAll } from '../data/store.js'
-
-interface Question {
-  id: string
-  question: string
-  category: string
-  status: string
-  bestScore: number | null
-  averageScore: number | null
-  attempts: number
-  createdAt: string
-  lastAttemptAt: string | null
-}
-
-interface SessionRecord {
-  id: string
-  mode: string
-  createdAt: string
-  lastActivityAt?: string
-  questionText?: string
-  // 면접 기록용
-  totalScore?: number
-  grade?: string
-  questionCount?: number
-  // 무한 기록용
-  streak?: number
-  totalAnswered?: number
-  averageScore?: number
-  isNewRecord?: boolean
-}
+import { db } from '../data/db.js'
 
 export const statsRouter = Router()
 
-statsRouter.get('/', async (_req, res) => {
-  const questions = await readAll<Question>('questions')
-  const sessions = await readAll<SessionRecord>('sessions')
-
+statsRouter.get('/', (_req, res) => {
   const today = new Date().toISOString().slice(0, 10)
 
   // 기본 통계
-  const totalQuestions = questions.length
-  const mastered = questions.filter((q) => q.status === 'master').length
-  const withScores = questions.filter((q) => q.averageScore != null)
-  const avgScore = withScores.length > 0
-    ? Math.round(withScores.reduce((s, q) => s + (q.averageScore ?? 0), 0) / withScores.length * 10) / 10
-    : 0
+  const basicStats = db.prepare(`
+    SELECT
+      COUNT(*) as total_questions,
+      SUM(CASE WHEN status = 'master' THEN 1 ELSE 0 END) as mastered,
+      ROUND(AVG(CASE WHEN average_score IS NOT NULL THEN average_score END), 1) as avg_score
+    FROM questions
+  `).get() as Record<string, unknown>
 
-  const todayLearned = sessions.filter(
-    (s) => s.mode === 'learn' && s.createdAt?.startsWith(today),
-  ).length
+  const todayLearned = (db.prepare(`
+    SELECT COUNT(*) as count FROM sessions
+    WHERE mode = 'learn' AND created_at LIKE ?
+  `).get(`${today}%`) as Record<string, unknown>)?.count ?? 0
 
-  const endlessSessions = sessions.filter((s) => s.mode === 'endless')
-  const bestStreak = endlessSessions.reduce((max, s) => Math.max(max, s.streak ?? 0), 0)
+  const bestStreak = (db.prepare(`
+    SELECT MAX(streak) as best FROM sessions WHERE mode = 'endless'
+  `).get() as Record<string, unknown>)?.best ?? 0
 
-  // 약한 질문 (평균 점수 낮은 순)
-  const weakQuestions = questions
-    .filter((q) => q.averageScore != null && q.averageScore < 5)
-    .sort((a, b) => (a.averageScore ?? 0) - (b.averageScore ?? 0))
-    .slice(0, 7)
+  // 약한 질문
+  const weakQuestions = db.prepare(`
+    SELECT id, question, category, average_score as averageScore, attempts
+    FROM questions
+    WHERE average_score IS NOT NULL AND average_score < 5
+    ORDER BY average_score ASC
+    LIMIT 7
+  `).all()
 
   // 카테고리별 통계
-  const catMap = new Map<string, { total: number; scoreSum: number; count: number }>()
-  for (const q of questions) {
-    const entry = catMap.get(q.category) ?? { total: 0, scoreSum: 0, count: 0 }
-    entry.total++
-    if (q.averageScore != null) {
-      entry.scoreSum += q.averageScore
-      entry.count++
-    }
-    catMap.set(q.category, entry)
-  }
-  const categoryStats = Array.from(catMap.entries())
-    .map(([category, { total, scoreSum, count }]) => ({
+  const categoryStats = db.prepare(`
+    SELECT
       category,
-      count: total,
-      avg: count > 0 ? Math.round(scoreSum / count * 10) / 10 : 0,
-    }))
-    .sort((a, b) => a.avg - b.avg)
+      COUNT(*) as count,
+      ROUND(AVG(CASE WHEN average_score IS NOT NULL THEN average_score END), 1) as avg
+    FROM questions
+    GROUP BY category
+    ORDER BY avg ASC
+  `).all()
 
   // 면접 점수 추이
-  const interviews = sessions.filter((s) => s.mode === 'interview' && s.totalScore != null)
-  const scoreTrend = interviews
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-    .slice(-30)
-    .map((s) => ({
-      day: new Date(s.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
-      score: s.totalScore ?? 0,
-    }))
+  const scoreTrendRaw = db.prepare(`
+    SELECT created_at, total_score as score
+    FROM sessions
+    WHERE mode = 'interview' AND total_score IS NOT NULL
+    ORDER BY created_at ASC
+    LIMIT 30
+  `).all() as Array<{ created_at: string; score: number }>
+
+  const scoreTrend = scoreTrendRaw.map((r) => ({
+    day: new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
+    score: r.score,
+  }))
 
   // 최근 활동
-  const recentActivity = sessions
-    .filter((s) => ['learn', 'interview', 'endless'].includes(s.mode))
-    .sort((a, b) => (b.lastActivityAt ?? b.createdAt).localeCompare(a.lastActivityAt ?? a.createdAt))
-    .slice(0, 10)
-    .map((s) => ({
-      mode: s.mode,
-      title: s.questionText || s.id,
-      score: s.totalScore ?? s.averageScore,
-      grade: s.grade,
-      streak: s.streak,
-      time: s.lastActivityAt ?? s.createdAt,
-    }))
+  const recentActivity = db.prepare(`
+    SELECT
+      mode, question_text as title,
+      total_score as score, grade, streak,
+      COALESCE(last_activity_at, created_at) as time
+    FROM sessions
+    WHERE mode IN ('learn', 'interview', 'endless')
+    ORDER BY COALESCE(last_activity_at, created_at) DESC
+    LIMIT 10
+  `).all()
 
   res.json({
-    totalQuestions,
-    mastered,
-    avgScore,
+    totalQuestions: basicStats.total_questions ?? 0,
+    mastered: basicStats.mastered ?? 0,
+    avgScore: basicStats.avg_score ?? 0,
     todayLearned,
     bestStreak,
     weakQuestions,

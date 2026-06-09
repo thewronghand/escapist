@@ -1,5 +1,8 @@
 .envrc
 node_modules/
+*.db
+*.db-wal
+*.db-shm
 dist/
 .DS_Store
 *.local
