@@ -45,16 +45,17 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     )
   }
 
+  // 완전 초기 상태
   if (stats.totalQuestions === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <Icon name="target" size={28} className="text-ash" />
+      <div className="flex flex-col items-center justify-center h-full gap-6">
+        <img src="/logo.svg" alt="" className="w-16 h-16 opacity-100" />
         <div className="text-center">
-          <p className="text-ink text-[16px] font-medium">아직 등록된 질문이 없어요</p>
-          <p className="text-mute text-[13px] mt-1">질문을 추가하고 면접 준비를 시작하세요</p>
+          <p className="text-ink text-[20px] font-semibold tracking-tight">준비를 시작하세요</p>
+          <p className="text-mute text-[13px] mt-2">질문을 추가하면 여기에 전투 기록이 쌓입니다</p>
         </div>
-        <Button variant="primary" size="sm" icon="plus" onClick={() => onNavigate?.('learn')}>
-          첫 질문 추가하기
+        <Button variant="primary" icon="plus" onClick={() => onNavigate?.('learn')}>
+          첫 질문 추가
         </Button>
       </div>
     )
@@ -67,37 +68,47 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   return (
     <div className="max-w-[1080px] mx-auto px-10 pt-10 pb-16 overflow-auto h-full">
 
-      {/* ─── 상단: 핵심 지표 + 행동 ─── */}
-      <div className="esc-noise flex items-center gap-6 mb-12 bg-surface border border-hairline rounded-xl px-6 py-5">
-        <ScoreRing score={stats.avgScore} size={88} label="평균" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-3 mb-1">
-            <span className="text-ink text-[13px] font-medium">질문 {stats.totalQuestions}</span>
-            <span className="text-mute text-[13px]">마스터 {stats.mastered} ({masteredPct}%)</span>
-            <span className="text-mute text-[13px]">오늘 {stats.todayLearned}</span>
-            {stats.bestStreak > 0 && (
-              <span className="text-mute text-[13px] flex items-center gap-1">
-                <Icon name="flame" size={12} stroke="var(--accent-red)" />
-                {stats.bestStreak}
-              </span>
-            )}
+      {/* ─── 히어로: 로고 크게 → CTA → 숫자 한 줄 ─── */}
+      <div className="mb-14">
+        <img src="/logo-horizontal.svg" alt="Escapist" className="h-16 mb-3" />
+        <p className="text-ash text-[12px] italic tracking-wide mb-6">"The only way out is through."</p>
+
+        <div className="flex gap-3 mb-8">
+          <Button variant="primary" icon="mic" onClick={() => onNavigate?.('interview')}>면접 시작</Button>
+          <Button variant="tertiary" icon="infinity" onClick={() => onNavigate?.('endless')}>무한 모드</Button>
+          <Button variant="tertiary" icon="book" onClick={() => onNavigate?.('learn')}>학습</Button>
+        </div>
+
+        <div className="flex items-baseline gap-8">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[40px] font-bold tabular-nums tracking-tight" style={{ color: scoreColor(stats.avgScore) }}>
+              {stats.avgScore}
+            </span>
+            <span className="text-mute text-[13px]">평균</span>
           </div>
-          <p className="text-stone text-[11px] italic">"The only way out is through."</p>
+          <span className="text-hairline">|</span>
+          <span className="text-mute text-[14px] tabular-nums">질문 {stats.totalQuestions}</span>
+          <span className="text-mute text-[14px] tabular-nums">마스터 {stats.mastered} ({masteredPct}%)</span>
+          <span className="text-mute text-[14px] tabular-nums">오늘 {stats.todayLearned}</span>
+          {stats.bestStreak > 0 && (
+            <span className="text-accent-red text-[14px] tabular-nums flex items-center gap-1">
+              <Icon name="flame" size={13} stroke="var(--accent-red)" />{stats.bestStreak}
+            </span>
+          )}
         </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="tertiary" size="sm" icon="infinity" onClick={() => onNavigate?.('endless')}>무한</Button>
-          <Button variant="primary" size="sm" icon="mic" onClick={() => onNavigate?.('interview')}>면접 시작</Button>
-        </div>
+
+        <div className="h-px bg-hairline mt-8" />
       </div>
 
-      {/* ─── 중단: 약한 질문 + 카테고리 ─── */}
-      <div className="grid grid-cols-[3fr_2fr] gap-10 mb-12">
+      {/* ─── 약한 질문 + 카테고리 ─── */}
+      <div className="grid grid-cols-[3fr_2fr] gap-10 mb-14">
         <div>
-          <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-2">약한 질문</h2>
+          <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">약한 질문</h2>
           {stats.weakQuestions.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-[13px] text-stone">약한 질문이 없어요</p>
-              <p className="text-[11px] text-stone mt-1">학습을 시작하면 여기에 표시됩니다</p>
+            <div className="py-10 text-center">
+              <img src="/logo.svg" alt="" className="w-10 h-10 opacity-100 mx-auto mb-3" />
+              <p className="text-stone text-[13px]">약한 질문이 없어요</p>
+              <p className="text-stone text-[11px] mt-1">학습하면 여기에 표시됩니다</p>
             </div>
           ) : (
             <div className="flex flex-col">
@@ -123,9 +134,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
 
         <div>
-          <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-2">카테고리</h2>
+          <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">카테고리</h2>
           {stats.categoryStats.length === 0 ? (
-            <p className="text-[13px] text-stone py-8 text-center">질문을 추가하면 카테고리별 현황이 표시됩니다</p>
+            <div className="py-10 text-center">
+              <img src="/logo.svg" alt="" className="w-10 h-10 opacity-100 mx-auto mb-3" />
+              <p className="text-stone text-[13px]">카테고리별 현황이 여기에 표시됩니다</p>
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
               {stats.categoryStats.map((cat) => (
@@ -147,12 +161,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       </div>
 
-      {/* ─── 하단: 차트 + 활동 ─── */}
-      {(hasTrend || hasActivity) && (
+      {/* ─── 차트 + 활동 ─── */}
+      {(hasTrend || hasActivity) ? (
         <div className={`grid gap-10 ${hasTrend && hasActivity ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {hasTrend && (
             <div>
-              <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-2">면접 추이</h2>
+              <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">면접 추이</h2>
               <div className="bg-surface border border-hairline rounded-lg p-4 h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={stats.scoreTrend}>
@@ -177,7 +191,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
           {hasActivity && (
             <div>
-              <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-2">최근 활동</h2>
+              <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">최근 활동</h2>
               <div className="flex flex-col">
                 {stats.recentActivity.slice(0, 5).map((act, i) => {
                   const mode = MODE_ICON[act.mode] ?? MODE_ICON.learn
@@ -208,11 +222,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
           )}
         </div>
-      )}
-
-      {!hasTrend && !hasActivity && (
-        <div className="py-8 text-center">
-          <p className="text-[13px] text-stone">면접이나 학습을 진행하면 여기에 기록이 표시됩니다</p>
+      ) : (
+        <div className="py-16 text-center">
+          <img src="/logo.svg" alt="" className="w-12 h-12 opacity-100 mx-auto mb-4" />
+          <p className="text-stone text-[14px]">면접이나 학습을 진행하면</p>
+          <p className="text-stone text-[14px]">여기에 기록이 쌓입니다</p>
+          <div className="flex justify-center gap-3 mt-6">
+            <Button variant="tertiary" size="sm" icon="book" onClick={() => onNavigate?.('learn')}>학습 시작</Button>
+            <Button variant="primary" size="sm" icon="mic" onClick={() => onNavigate?.('interview')}>면접 시작</Button>
+          </div>
         </div>
       )}
     </div>

@@ -51,6 +51,56 @@ interface ClientMessage {
   generateCount?: number
 }
 
+interface QuestionRecord {
+  id: string
+  bestScore: number | null
+  averageScore: number | null
+  attempts: number
+  status: string
+  lastAttemptAt: string | null
+}
+
+function tryExtractScore(text: string): number | null {
+  try {
+    // ```json 코드블록 제거
+    let cleaned = text.trim()
+    const codeBlockMatch = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/)
+    if (codeBlockMatch) cleaned = codeBlockMatch[1].trim()
+
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      if (typeof parsed.score === 'number') return parsed.score
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+function updateQuestionScore(questionId: string, score: number): void {
+  if (!questionId) return
+  const question = readOne<QuestionRecord>('questions', questionId)
+  if (!question) return
+
+  const attempts = (question.attempts ?? 0) + 1
+  const prevAvg = question.averageScore ?? 0
+  const newAvg = prevAvg === 0 ? score : Math.round(((prevAvg * (attempts - 1) + score) / attempts) * 10) / 10
+  const bestScore = Math.max(question.bestScore ?? 0, score)
+
+  let status = question.status
+  if (bestScore >= 8) status = 'master'
+  else if (newAvg < 5) status = 'weak'
+  else status = 'learning'
+
+  writeOne('questions', questionId, {
+    ...question,
+    bestScore,
+    averageScore: newAvg,
+    attempts,
+    status,
+    lastAttemptAt: new Date().toISOString(),
+  })
+}
+
 function appendMessage(session: Session, msg: MessageEntry): Session {
   session.messages = [...(session.messages ?? []), msg]
   session.lastActivityAt = new Date().toISOString()
@@ -142,6 +192,10 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
     }
     await writeOne('sessions', sessionId, session)
 
+    // 질문 점수 업데이트
+    const score = tryExtractScore(response.result)
+    if (score !== null) updateQuestionScore(msg.questionId ?? '', score)
+
     ws.send(JSON.stringify({
       type: 'session:created',
       sessionId,
@@ -175,6 +229,10 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
   const assistantMsg: MessageEntry = { id: uuid(), role: agent, agent, text: response.result, timestamp: now }
   appendMessage(session, assistantMsg)
   await writeOne('sessions', session.id, session)
+
+  // 질문 점수 업데이트
+  const score = tryExtractScore(response.result)
+  if (score !== null) updateQuestionScore(session.questionId, score)
 
   ws.send(JSON.stringify({
     type: 'chat:response',
