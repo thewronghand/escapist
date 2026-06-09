@@ -1,31 +1,40 @@
-import { useState } from 'react'
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { SidebarShell } from '@/components/layout/SidebarShell'
+import { LearnSidebar } from '@/components/learn/LearnSidebar'
+import { SandboxPanel } from '@/components/sandbox/SandboxPanel'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LearnPage } from '@/pages/LearnPage'
 import { InterviewPage } from '@/pages/InterviewPage'
 import { EndlessPage } from '@/pages/EndlessPage'
-import { SandboxPanel } from '@/components/sandbox/SandboxPanel'
 import { SettingsPage } from '@/pages/SettingsPage'
-// import { BackgroundShapes } from '@/components/layout/BackgroundShapes'
-import { LearnSidebar } from '@/components/learn/LearnSidebar'
-import { useSessions } from '@/hooks/useSessions'
-import { useChat } from '@/hooks/useChat'
+import { AppProvider, useAppContext } from '@/contexts/AppContext'
 
-function App() {
-  const [activeNav, setActiveNav] = useState('dashboard')
-  const sessions = useSessions('learn')
-  const chat = useChat()
-  const [learnView, setLearnView] = useState<'select' | 'session'>('select')
-  const [showSettings, setShowSettings] = useState(false)
+const PATH_TO_NAV: Record<string, string> = {
+  '/': 'dashboard', '/learn': 'learn', '/interview': 'interview',
+  '/endless': 'endless', '/settings': 'settings',
+}
+
+const NAV_TO_PATH: Record<string, string> = {
+  dashboard: '/', learn: '/learn', interview: '/interview',
+  endless: '/endless', settings: '/settings',
+}
+
+function AppLayout() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { chat, sessions, learnView, setLearnView } = useAppContext()
+
+  const activeNav = PATH_TO_NAV[location.pathname] ?? 'dashboard'
+  const isSettings = location.pathname === '/settings'
+
+  const handleNavigate = (nav: string) => {
+    navigate(NAV_TO_PATH[nav] ?? '/')
+  }
 
   const handleSelectSession = (id: string) => {
     chat.loadSession(id)
     setLearnView('session')
-  }
-
-  const handleNewSession = () => {
-    setLearnView('select')
   }
 
   const learnSidebar = (
@@ -34,7 +43,7 @@ function App() {
         sessions={sessions.sessions}
         activeSessionId={chat.sessionId}
         onSelectSession={handleSelectSession}
-        onNewSession={handleNewSession}
+        onNewSession={() => setLearnView('select')}
       />
     </SidebarShell>
   )
@@ -42,25 +51,37 @@ function App() {
   return (
     <AppShell
       activeNav={activeNav}
-      onNavigate={(nav) => { setActiveNav(nav); setShowSettings(false) }}
-      onSettings={() => setShowSettings(true)}
-      sidebar={!showSettings && activeNav === 'learn' ? learnSidebar : undefined}
+      onNavigate={handleNavigate}
+      onSettings={() => navigate('/settings')}
+      sidebar={!isSettings && activeNav === 'learn' ? learnSidebar : undefined}
     >
-      {showSettings && <SettingsPage onBack={() => setShowSettings(false)} />}
-      {!showSettings && activeNav === 'dashboard' && <DashboardPage onNavigate={setActiveNav} />}
-      {!showSettings && activeNav === 'learn' && (
-        <LearnPage
-          chat={chat}
-          sessions={sessions.sessions}
-          view={learnView}
-          setView={setLearnView}
-          onSessionCreated={sessions.refresh}
-        />
-      )}
-      {!showSettings && activeNav === 'interview' && <InterviewPage onNavigate={setActiveNav} />}
-      {!showSettings && activeNav === 'endless' && <EndlessPage onNavigate={setActiveNav} />}
+      <Routes>
+        <Route path="/" element={<DashboardPage onNavigate={handleNavigate} />} />
+        <Route path="/learn" element={
+          <LearnPage
+            chat={chat}
+            sessions={sessions.sessions}
+            view={learnView}
+            setView={setLearnView}
+            onSessionCreated={sessions.refresh}
+          />
+        } />
+        <Route path="/interview" element={<InterviewPage onNavigate={handleNavigate} />} />
+        <Route path="/endless" element={<EndlessPage onNavigate={handleNavigate} />} />
+        <Route path="/settings" element={<SettingsPage onBack={() => navigate(-1)} />} />
+      </Routes>
       <SandboxPanel />
     </AppShell>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppProvider>
+        <AppLayout />
+      </AppProvider>
+    </BrowserRouter>
   )
 }
 
