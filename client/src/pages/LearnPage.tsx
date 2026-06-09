@@ -133,6 +133,28 @@ export function LearnPage({ chat, view, setView, onSessionCreated }: LearnPagePr
     return null
   }
 
+  // 최신 메시지에서 evaluation 추출 → followUps/treeRoot 업데이트 (렌더 밖에서)
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  const lastEvaluation = lastMessage && lastMessage.role !== 'user'
+    ? parseEvaluation(lastMessage.text)
+    : null
+
+  useEffect(() => {
+    if (!lastEvaluation) return
+    if (lastEvaluation.followUpQuestions?.length && followUps.length === 0) {
+      setFollowUps(lastEvaluation.followUpQuestions)
+    }
+    if (treeRoot && lastEvaluation.score != null) {
+      const updateScore = (node: FollowUpNode): FollowUpNode => {
+        if (node.id === currentTreeNodeId) {
+          return { ...node, score: lastEvaluation.score, status: 'answered' }
+        }
+        return { ...node, children: node.children.map(updateScore) }
+      }
+      setTreeRoot(updateScore(treeRoot))
+    }
+  }, [lastMessage?.id])
+
   const renderMessage = (msg: ChatMessage) => {
     if (msg.role === 'user') {
       return <ChatBubble key={msg.id} message={msg} />
@@ -140,19 +162,6 @@ export function LearnPage({ chat, view, setView, onSessionCreated }: LearnPagePr
 
     const evaluation = parseEvaluation(msg.text)
     if (evaluation) {
-      if (evaluation.followUpQuestions?.length && followUps.length === 0) {
-        setFollowUps(evaluation.followUpQuestions)
-      }
-      // 현재 트리 노드에 점수 반영
-      if (treeRoot && evaluation.score != null) {
-        const updateScore = (node: FollowUpNode): FollowUpNode => {
-          if (node.id === currentTreeNodeId) {
-            return { ...node, score: evaluation.score, status: 'answered' }
-          }
-          return { ...node, children: node.children.map(updateScore) }
-        }
-        setTreeRoot(updateScore(treeRoot))
-      }
       return (
         <div key={msg.id}>
           <ChatBubble message={{ ...msg, text: evaluation.feedback }} />

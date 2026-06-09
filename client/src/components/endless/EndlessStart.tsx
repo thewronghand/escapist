@@ -27,7 +27,7 @@ export function EndlessStart({ bestStreak, onStart }: EndlessStartProps) {
     <div className="max-w-[640px] mx-auto px-6 py-8">
       {/* 베스트 레코드 */}
       <div className="relative overflow-hidden rounded-xl p-6 mb-8 bg-surface border border-hairline">
-        <div className="esc-stripe-band" style={{ opacity: 0.5 }} />
+        <div className="esc-stripe-band opacity-50" />
         <div className="relative text-center">
           <p className="text-[12px] text-mute uppercase tracking-wider mb-1">BEST RECORD</p>
           <div className="flex items-center justify-center gap-2">
@@ -89,7 +89,7 @@ export function EndlessStart({ bestStreak, onStart }: EndlessStartProps) {
                 threshold === t ? 'bg-surface-elevated text-ink shadow-sm' : 'text-mute hover:text-body'
               }`}
             >
-              {t}점 이하
+              {t}점 이하 탈락
             </button>
           ))}
         </div>

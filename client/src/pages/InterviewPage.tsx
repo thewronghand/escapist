@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Button } from '@/components/ui/Button'
 import type { Question } from '@/types'
 import { useQuestions } from '@/hooks/useQuestions'
 import { useInterview } from '@/hooks/useInterview'
@@ -21,10 +22,15 @@ export function InterviewPage({ onNavigate }: InterviewPageProps) {
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([])
   const [settings, setSettings] = useState<InterviewSettings | null>(null)
   const [result, setResult] = useState<InterviewResult | null>(null)
+  const [noQuestions, setNoQuestions] = useState(false)
 
   const handleStart = useCallback((s: InterviewSettings) => {
     const picked = interview.pickQuestions(questions, s)
-    if (picked.length === 0) return
+    if (picked.length === 0) {
+      setNoQuestions(true)
+      return
+    }
+    setNoQuestions(false)
     setSettings(s)
     setSelectedQuestions(picked)
     setPhase('progress')
@@ -104,5 +110,18 @@ export function InterviewPage({ onNavigate }: InterviewPageProps) {
     )
   }
 
-  return <InterviewSetup onStart={handleStart} />
+  return (
+    <>
+      <InterviewSetup onStart={handleStart} />
+      {noQuestions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(2,3,4,0.72)' }}>
+          <div className="bg-surface border border-hairline rounded-xl p-6 max-w-[360px] text-center esc-rise">
+            <p className="text-ink text-[15px] font-medium mb-2">해당 조건의 질문이 없어요</p>
+            <p className="text-mute text-[13px] mb-4">필터를 조정하거나 질문을 추가해주세요</p>
+            <Button variant="primary" size="sm" onClick={() => setNoQuestions(false)}>확인</Button>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

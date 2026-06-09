@@ -1,40 +1,11 @@
 import { useState } from 'react'
 import type { InterviewSettings } from '@/hooks/useInterview'
 import { Button } from '@/components/ui/Button'
+import { Segmented } from '@/components/ui/Segmented'
 import { CATEGORIES } from '@/types'
 
 interface InterviewSetupProps {
   onStart: (settings: InterviewSettings) => void
-}
-
-function Segmented<T extends string | number>({
-  options,
-  value,
-  onChange,
-  labels,
-}: {
-  options: T[]
-  value: T
-  onChange: (v: T) => void
-  labels?: Record<string, string>
-}) {
-  return (
-    <div className="flex bg-surface-card rounded-md p-0.5 gap-0.5">
-      {options.map((opt) => (
-        <button
-          key={String(opt)}
-          onClick={() => onChange(opt)}
-          className={`flex-1 px-3 py-1.5 rounded-sm text-[13px] transition-colors ${
-            value === opt
-              ? 'bg-surface-elevated text-ink shadow-sm'
-              : 'text-mute hover:text-body'
-          }`}
-        >
-          {labels?.[String(opt)] ?? String(opt)}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 export function InterviewSetup({ onStart }: InterviewSetupProps) {

@@ -60,14 +60,14 @@ export function GameOverScreen({ result, bestStreak, onRetry, onDashboard }: Gam
       )}
 
       {/* 히스토리 */}
-      <button
+      {result.history.length > 0 && <button
         onClick={() => setShowHistory(!showHistory)}
         className="flex items-center gap-1 mx-auto text-[13px] text-mute hover:text-body transition-colors mb-4"
       >
         전체 답변 히스토리
         <Icon name="chevdown" size={14} style={{ transform: showHistory ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
-      </button>
-      {showHistory && (
+      </button>}
+      {showHistory && result.history.length > 0 && (
         <div className="flex flex-col gap-1 text-left mb-6">
           {result.history.map((item, i) => (
             <div key={i} className="flex items-center gap-3 px-3 py-2 bg-surface rounded-md border border-hairline">
