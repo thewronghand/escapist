@@ -136,10 +136,23 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
     setActiveQuestion(null)
   }
 
+  interface ExplanationResponse {
+    type: 'explanation'
+    content: string
+    checkQuestion: string
+  }
+
+  const parseResponse = (text: string): { evaluation?: Evaluation; explanation?: ExplanationResponse } => {
+    const { parsed } = parseClaudeJson<Record<string, unknown>>(text)
+    if (!parsed) return {}
+    if (parsed.type === 'evaluation') return { evaluation: parsed as unknown as Evaluation }
+    if (parsed.type === 'explanation') return { explanation: parsed as unknown as ExplanationResponse }
+    return {}
+  }
+
   const parseEvaluation = (text: string): Evaluation | null => {
-    const { parsed } = parseClaudeJson<Evaluation & { type?: string }>(text)
-    if (parsed?.type === 'evaluation') return parsed
-    return null
+    const { evaluation } = parseResponse(text)
+    return evaluation ?? null
   }
 
   // 최신 메시지에서 evaluation 추출 → followUps/treeRoot 업데이트 (렌더 밖에서)
@@ -169,7 +182,8 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
       return <ChatBubble key={msg.id} message={msg} />
     }
 
-    const evaluation = parseEvaluation(msg.text)
+    const { evaluation, explanation } = parseResponse(msg.text)
+
     if (evaluation) {
       return (
         <div key={msg.id}>
@@ -177,6 +191,20 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
           <div className="mt-3 max-w-[80%]">
             <EvaluationCard evaluation={evaluation} />
           </div>
+        </div>
+      )
+    }
+
+    if (explanation) {
+      return (
+        <div key={msg.id}>
+          <ChatBubble message={{ ...msg, text: explanation.content }} />
+          {explanation.checkQuestion && (
+            <div className="mt-2 max-w-[80%] px-4 py-3 bg-surface border border-hairline rounded-lg">
+              <p className="text-[11px] text-accent-blue uppercase tracking-wider mb-1">이해 확인 질문</p>
+              <p className="text-[14px] text-body">{explanation.checkQuestion}</p>
+            </div>
+          )}
         </div>
       )
     }
