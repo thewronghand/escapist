@@ -1,78 +1,44 @@
 import { createRouter, createRootRoute, createRoute } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { RootLayout } from '@/layouts/RootLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LearnPageWrapper } from '@/pages/LearnPageWrapper'
 import { InterviewPage } from '@/pages/InterviewPage'
 import { EndlessPage } from '@/pages/EndlessPage'
+import { SandboxPage } from '@/pages/SandboxPage'
 import { SettingsPageWrapper } from '@/pages/SettingsPageWrapper'
+
+const NAV_MAP: Record<string, string> = {
+  dashboard: '/', learn: '/learn', interview: '/interview',
+  endless: '/endless', sandbox: '/sandbox',
+}
 
 const rootRoute = createRootRoute({
   component: RootLayout,
 })
 
-const dashboardRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  component: DashboardWrapper,
-})
-
-const learnRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/learn',
-  component: LearnPageWrapper,
-})
-
-const interviewRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/interview',
-  component: InterviewWrapper,
-})
-
-const endlessRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/endless',
-  component: EndlessWrapper,
-})
-
-const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/settings',
-  component: SettingsPageWrapper,
-})
-
-// 래퍼 컴포넌트 — props를 hooks/atoms에서 가져와서 전달
-import { useRouter } from '@tanstack/react-router'
-
 function DashboardWrapper() {
   const router = useRouter()
-  return <DashboardPage onNavigate={(nav: string) => {
-    const map: Record<string, string> = { dashboard: '/', learn: '/learn', interview: '/interview', endless: '/endless' }
-    router.navigate({ to: map[nav] ?? '/' })
-  }} />
+  return <DashboardPage onNavigate={(nav: string) => router.navigate({ to: NAV_MAP[nav] ?? '/' })} />
 }
 
 function InterviewWrapper() {
   const router = useRouter()
-  return <InterviewPage onNavigate={(nav: string) => {
-    const map: Record<string, string> = { dashboard: '/', learn: '/learn', interview: '/interview', endless: '/endless' }
-    router.navigate({ to: map[nav] ?? '/' })
-  }} />
+  return <InterviewPage onNavigate={(nav: string) => router.navigate({ to: NAV_MAP[nav] ?? '/' })} />
 }
 
 function EndlessWrapper() {
   const router = useRouter()
-  return <EndlessPage onNavigate={(nav: string) => {
-    const map: Record<string, string> = { dashboard: '/', learn: '/learn', interview: '/interview', endless: '/endless' }
-    router.navigate({ to: map[nav] ?? '/' })
-  }} />
+  return <EndlessPage onNavigate={(nav: string) => router.navigate({ to: NAV_MAP[nav] ?? '/' })} />
 }
 
 const routeTree = rootRoute.addChildren([
-  dashboardRoute,
-  learnRoute,
-  interviewRoute,
-  endlessRoute,
-  settingsRoute,
+  createRoute({ getParentRoute: () => rootRoute, path: '/', component: DashboardWrapper }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/learn', component: LearnPageWrapper }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/interview', component: InterviewWrapper }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/endless', component: EndlessWrapper }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/sandbox', component: SandboxPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPageWrapper }),
 ])
 
 export const router = createRouter({

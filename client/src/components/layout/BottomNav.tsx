@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { id: 'learn', icon: 'book', label: '학습' },
   { id: 'interview', icon: 'mic', label: '면접' },
   { id: 'endless', icon: 'infinity', label: '무한' },
+  { id: 'sandbox', icon: 'code', label: '샌드박스' },
 ]
 
 interface BottomNavProps {
