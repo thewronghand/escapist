@@ -391,24 +391,31 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
   ws.send(JSON.stringify({ type: 'sandbox:typing' }))
 
   if (!msg.sandboxId) {
-    const response = await startSession(msg.message ?? '', SANDBOX_PROMPT)
+    const userText = msg.message ?? ''
+    const response = await startSession(userText, SANDBOX_PROMPT)
 
     const sandboxId = `sb_${uuid().slice(0, 8)}`
+    const now = new Date().toISOString()
+    const userMsg: MessageEntry = { id: uuid(), role: 'user', text: userText, timestamp: now }
+    const assistantMsg: MessageEntry = { id: uuid(), role: 'assistant', text: response.result, timestamp: now }
+
     const session: Session = {
       id: sandboxId,
       claudeSessionId: response.sessionId,
       questionId: '',
-      questionText: '',
+      questionText: userText.slice(0, 30),
       mode: 'sandbox',
       agent: 'tutor',
-      createdAt: new Date().toISOString(),
+      messages: [userMsg, assistantMsg],
+      createdAt: now,
+      lastActivityAt: now,
     }
     await writeOne('sessions', sandboxId, session)
 
     ws.send(JSON.stringify({ type: 'sandbox:created', sandboxId }))
     ws.send(JSON.stringify({
       type: 'sandbox:response',
-      message: { id: uuid(), text: response.result, timestamp: new Date().toISOString() },
+      message: { id: assistantMsg.id, text: response.result, timestamp: now },
     }))
     return
   }
@@ -419,11 +426,19 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
     return
   }
 
+  const now = new Date().toISOString()
+  const userMsg: MessageEntry = { id: uuid(), role: 'user', text: msg.message ?? '', timestamp: now }
+  appendMessage(session, userMsg)
+
   const response = await resumeSession(session.claudeSessionId, msg.message ?? '')
+
+  const assistantMsg: MessageEntry = { id: uuid(), role: 'assistant', text: response.result, timestamp: now }
+  appendMessage(session, assistantMsg)
+  await writeOne('sessions', session.id, session)
 
   ws.send(JSON.stringify({
     type: 'sandbox:response',
-    message: { id: uuid(), text: response.result, timestamp: new Date().toISOString() },
+    message: { id: assistantMsg.id, text: response.result, timestamp: now },
   }))
 }
 

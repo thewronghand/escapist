@@ -27,3 +27,12 @@ sessionsRouter.get('/', (req, res) => {
 
   res.json(sessions)
 })
+
+sessionsRouter.delete('/:id', (req, res) => {
+  const result = db.prepare('DELETE FROM sessions WHERE id = ?').run(req.params.id)
+  if (result.changes === 0) {
+    res.status(404).json({ error: 'Session not found' })
+    return
+  }
+  res.json({ ok: true })
+})

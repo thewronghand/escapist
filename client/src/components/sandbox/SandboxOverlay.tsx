@@ -9,7 +9,7 @@ interface SandboxOverlayProps {
 }
 
 export function SandboxOverlay({ onNavigateToPage }: SandboxOverlayProps) {
-  const { messages, typing, sendMessage, reset } = useSandbox()
+  const { messages, typing, sendMessage, createSession } = useSandbox()
   const [open, setOpen] = useState(false)
 
   if (!open) {
@@ -43,7 +43,7 @@ export function SandboxOverlay({ onNavigateToPage }: SandboxOverlayProps) {
             </button>
           )}
           <button
-            onClick={reset}
+            onClick={createSession}
             className="w-7 h-7 rounded flex items-center justify-center text-ash hover:text-body hover:bg-surface-elevated transition-colors"
             title="대화 초기화"
           >
