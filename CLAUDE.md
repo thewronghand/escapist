@@ -15,6 +15,7 @@ Claude CLI 세션 기반 면접 준비 앱. 질문 등록 → 답변 평가 → 
 - **Claude 응답은 반드시 `parseClaudeJson()`으로 파싱** — JSON이 마크다운 코드블록으로 감싸져 올 수 있음
 - **서버 데이터는 SQLite** — fs JSON 직접 읽기/쓰기 금지 (store.ts 경유)
 - **Tailwind 클래스에서 디자인 토큰 사용** — 하드코딩 색상/간격 지양, `bg-canvas`, `text-ink`, `border-hairline` 등 사용
+- **새 UI 컴포넌트는 `@thewrong/ui` 우선** — Button, Modal, Toast 등 기존 자체 구현은 유지하되, 새로 필요한 컴포넌트(Select, Drawer, Tooltip 등)는 `@thewrong/ui`에서 가져오기
 
 ---
 
@@ -29,6 +30,7 @@ Claude CLI 세션 기반 면접 준비 앱. 질문 등록 → 답변 평가 → 
 | 차트 | Recharts |
 | 다이어그램 | Mermaid.js + React Flow (@xyflow/react) |
 | 마크다운 | react-markdown |
+| UI 라이브러리 | @thewrong/ui (새 컴포넌트 추가 시 우선 사용) |
 | 디자인 | Raycast 기반 다크 테마 (tokens.css → Tailwind @theme) |
 
 ---
