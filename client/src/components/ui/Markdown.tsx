@@ -36,7 +36,17 @@ export function Markdown({ children, className }: MarkdownProps) {
             const lang = match[1]
             return (
               <SyntaxHighlighter
-                style={oneDark}
+                style={{
+                  ...oneDark,
+                  'pre[class*="language-"]': {
+                    ...oneDark['pre[class*="language-"]'],
+                    background: 'var(--surface-card)',
+                  },
+                  'code[class*="language-"]': {
+                    ...oneDark['code[class*="language-"]'],
+                    background: 'transparent',
+                  },
+                }}
                 language={lang}
                 customStyle={{
                   margin: 0,
