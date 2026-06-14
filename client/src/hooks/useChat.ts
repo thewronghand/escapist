@@ -30,6 +30,8 @@ export function useChat() {
           break
         case 'session:loaded': {
           const session = data.session as Session
+          // 학습 세션만 처리 (샌드박스 무시)
+          if (session.id.startsWith('sb_')) break
           setSessionId(session.id)
           setMessages(session.messages ?? [])
           questionRef.current = { id: session.questionId, text: session.questionText }

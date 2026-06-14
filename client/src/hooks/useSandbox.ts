@@ -38,7 +38,9 @@ export function useSandbox() {
           break
         }
         case 'session:loaded': {
-          const session = data.session as { id: string; messages: SandboxMessage[] }
+          const session = data.session as { id: string; mode?: string; messages: SandboxMessage[] }
+          // 샌드박스 세션만 처리 (학습 세션 무시)
+          if (!session.id.startsWith('sb_') && session.mode !== 'sandbox') break
           setSandboxId(session.id)
           setMessages(session.messages ?? [])
           break

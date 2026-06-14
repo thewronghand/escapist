@@ -1,5 +1,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { MermaidDiagram } from '@/components/ui/MermaidDiagram'
 
 interface MarkdownProps {
@@ -29,14 +31,27 @@ export function Markdown({ children, className }: MarkdownProps) {
             return <MermaidDiagram code={code} className="my-2" />
           }
 
-          const isBlock = codeClass?.includes('language-')
-          if (isBlock) {
+          const match = codeClass?.match(/language-(\w+)/)
+          if (match) {
+            const lang = match[1]
             return (
-              <code className="block bg-surface-card border border-hairline rounded-md px-4 py-3 text-[13px] text-body font-mono overflow-x-auto whitespace-pre mb-2">
-                {children}
-              </code>
+              <SyntaxHighlighter
+                style={oneDark}
+                language={lang}
+                customStyle={{
+                  margin: 0,
+                  marginBottom: '0.5rem',
+                  borderRadius: 'var(--r-md)',
+                  border: '1px solid var(--hairline)',
+                  fontSize: '13px',
+                  background: 'var(--surface-card)',
+                }}
+              >
+                {String(children).replace(/\n$/, '')}
+              </SyntaxHighlighter>
             )
           }
+
           return (
             <code className="px-1.5 py-0.5 bg-surface-card border border-hairline rounded-xs text-[13px] text-accent-blue font-mono">
               {children}
