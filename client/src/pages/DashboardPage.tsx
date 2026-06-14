@@ -49,7 +49,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   if (stats.totalQuestions === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6">
-        <img src="/logo.svg" alt="" className="w-16 h-16 opacity-100" />
+        <img src="/assets/logo.svg" alt="" className="w-16 h-16 opacity-100" />
         <div className="text-center">
           <p className="text-ink text-[20px] font-semibold tracking-tight">준비를 시작하세요</p>
           <p className="text-mute text-[13px] mt-2">질문을 추가하면 여기에 전투 기록이 쌓입니다</p>
@@ -70,7 +70,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ─── 히어로: 로고 크게 → CTA → 숫자 한 줄 ─── */}
       <div className="mb-14">
-        <img src="/logo-horizontal.svg" alt="Escapist" className="h-16 mb-3" />
+        <img src="/assets/logo-horizontal.svg" alt="Escapist" className="h-16 mb-3" />
         <p className="text-ash text-[12px] italic tracking-wide mb-6">"The only way out is through."</p>
 
         <div className="flex gap-3 mb-8">
@@ -106,7 +106,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">약한 질문</h2>
           {stats.weakQuestions.length === 0 ? (
             <div className="py-10 text-center">
-              <img src="/logo.svg" alt="" className="w-10 h-10 opacity-100 mx-auto mb-3" />
+              <img src="/assets/logo.svg" alt="" className="w-10 h-10 opacity-100 mx-auto mb-3" />
               <p className="text-stone text-[13px]">약한 질문이 없어요</p>
               <p className="text-stone text-[11px] mt-1">학습하면 여기에 표시됩니다</p>
             </div>
@@ -137,7 +137,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">카테고리</h2>
           {stats.categoryStats.length === 0 ? (
             <div className="py-10 text-center">
-              <img src="/logo.svg" alt="" className="w-10 h-10 opacity-100 mx-auto mb-3" />
+              <img src="/assets/logo.svg" alt="" className="w-10 h-10 opacity-100 mx-auto mb-3" />
               <p className="text-stone text-[13px]">카테고리별 현황이 여기에 표시됩니다</p>
             </div>
           ) : (
@@ -224,7 +224,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       ) : (
         <div className="py-16 text-center">
-          <img src="/logo.svg" alt="" className="w-12 h-12 opacity-100 mx-auto mb-4" />
+          <img src="/assets/logo.svg" alt="" className="w-12 h-12 opacity-100 mx-auto mb-4" />
           <p className="text-stone text-[14px]">면접이나 학습을 진행하면</p>
           <p className="text-stone text-[14px]">여기에 기록이 쌓입니다</p>
           <div className="flex justify-center gap-3 mt-6">
