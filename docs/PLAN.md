@@ -640,26 +640,53 @@ Claude는 JSON으로 구조화된 응답을 반환:
 - [ ] interviewType 3분류: technical / behavioral / opinion
 - [ ] 샌드박스 세션 CRUD (목록/선택/생성/삭제, 메시지 저장)
 
-### Phase 5 — 배포
-- [ ] Express에서 빌드된 정적 파일 서빙 (vite build → dist)
-- [ ] PM2 프로세스 관리 (재부팅 시 자동 시작)
-- [ ] Cloudflare Tunnel 설정 (외부 접근)
-- [ ] 맥북 에어 홈 서버 설정
-- [ ] 자동 배포 스크립트 (git pull → build → restart)
+### Phase 5 — 서버 재설계 + 배포
+
+#### 5-1. 모노레포 재구성
+- [ ] pnpm workspace 또는 turborepo 도입
+- [ ] 패키지 분리:
+  ```
+  packages/
+    client/        ← 프론트 (React + Vite)
+    server/        ← API 서버 (Fastify + tRPC)
+    cli-worker/    ← Claude CLI 워커 (Node, WS 클라이언트)
+    shared/        ← 공유 타입, tRPC 라우터 타입
+  ```
+
+#### 5-2. 서버 스택 전환
+- [ ] Express → Fastify v5 전환
+- [ ] tRPC v11 도입 (Fastify 어댑터)
+- [ ] REST API → tRPC 프로시저 이관 (questions, sessions, stats, profile)
+- [ ] WebSocket → tRPC 구독 또는 @fastify/websocket
+- [ ] SQLite → Turso (SQLite 호환 클라우드 DB) 또는 PostgreSQL
+
+#### 5-3. Claude CLI 워커 분리
+- [ ] cli-worker 패키지: WS 클라이언트로 API 서버에 연결
+- [ ] API 서버 → cli-worker: Claude 호출 요청
+- [ ] cli-worker → API 서버: Claude 응답 반환
+- [ ] cli-worker는 맥북에서만 실행, API 서버는 클라우드
+
+#### 5-4. 배포
+- [ ] API 서버 + 프론트: Railway/Fly.io/VPS에 배포
+- [ ] cli-worker: 맥북 에어에서 PM2로 상시 실행
+- [ ] 맥북 caffeinate + Amphetamine으로 잠자기 방지
+- [ ] cli-worker 연결 상태 모니터링 (헤더에 표시)
+- [ ] cli-worker 다운 시 앱은 동작하되 Claude 기능만 "오프라인" 표시
 
 ---
 
-## 배포 전략
-
-Claude CLI가 서버에서 돌아야 하므로 클라우드 배포 불가. 홈 서버(맥북 에어) 기반.
+## 배포 아키텍처
 
 ```
-모바일/외부 → Cloudflare Tunnel → 맥북 에어 → Express(:8888) + 빌드된 정적 파일
-                                                    ↕
-                                              Claude CLI + SQLite
+[폰/브라우저] → [클라우드 서버]
+                  ├── Fastify + tRPC (API)
+                  ├── Vite 빌드 정적 파일
+                  └── DB (Turso/PostgreSQL)
+                        ↕ WebSocket
+                [맥북 에어 (홈)]
+                  └── cli-worker
+                        └── Claude CLI (child_process)
 ```
 
-- `vite build` → Express에서 정적 파일 서빙 (Vite dev 서버 불필요)
-- PM2로 프로세스 관리 (crash 시 자동 재시작, 재부팅 시 자동 시작)
-- `git pull && npm run build && pm2 restart`로 배포
-- 맥북 에어 뚜껑 닫아도 전원 연결 + 잠자기 방지 설정
+- 맥북 꺼져도: 앱 동작, 질문/세션/대시보드 접근 가능, Claude 호출만 불가
+- 맥북 켜지면: cli-worker가 자동 재연결, Claude 기능 복구
