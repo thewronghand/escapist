@@ -6,6 +6,7 @@ import { statsRouter } from './routes/stats.js'
 import { sessionsRouter } from './routes/sessions.js'
 import { profileRouter } from './routes/profile.js'
 import { handleWsConnection } from './ws/handler.js'
+import { CLI_WORKER_URL } from './claude/config.js'
 
 const app = express()
 const server = createServer(app)
@@ -17,8 +18,16 @@ app.use('/api/stats', statsRouter)
 app.use('/api/sessions', sessionsRouter)
 app.use('/api/profile', profileRouter)
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' })
+app.get('/api/health', async (_req, res) => {
+  let cliWorker = false
+  try {
+    const r = await fetch(`${CLI_WORKER_URL}/health`)
+    cliWorker = r.ok
+  } catch (err) {
+    console.warn('[health] CLI worker 연결 실패:', err instanceof Error ? err.message : err)
+  }
+
+  res.json({ status: 'ok', cliWorker })
 })
 
 wss.on('connection', handleWsConnection)
