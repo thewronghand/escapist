@@ -28,8 +28,12 @@ export function connect() {
   }
 
   socket.onmessage = (event) => {
+    if (typeof event.data !== 'string') {
+      console.warn('[WS] non-string message ignored', typeof event.data)
+      return
+    }
     try {
-      const data = JSON.parse(event.data as string) as Record<string, unknown>
+      const data = JSON.parse(event.data) as Record<string, unknown>
       handlers.forEach((h) => h(data))
     } catch {
       console.error('[WS] parse error', event.data)

@@ -236,8 +236,3 @@ export function getPromptForAgent(agent: string, interviewType?: string): string
     default: return INTERVIEWER_PROMPT
   }
 }
-
-export function getToolsForAgent(agent: string): string[] {
-  if (agent === 'researcher') return ['WebSearch', 'WebFetch']
-  return []
-}

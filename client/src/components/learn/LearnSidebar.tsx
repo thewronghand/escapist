@@ -1,24 +1,13 @@
 import type { SessionSummary } from '@/types'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+import { cn, timeAgo } from '@/lib/utils'
 
 interface LearnSidebarProps {
   sessions: SessionSummary[]
   activeSessionId: string | null
   onSelectSession: (id: string) => void
   onNewSession: () => void
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return '방금'
-  if (mins < 60) return `${mins}분 전`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}시간 전`
-  const days = Math.floor(hrs / 24)
-  return `${days}일 전`
 }
 
 export function LearnSidebar({ sessions, activeSessionId, onSelectSession, onNewSession }: LearnSidebarProps) {

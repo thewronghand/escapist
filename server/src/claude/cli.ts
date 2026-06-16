@@ -1,68 +1,50 @@
-import { spawn } from 'child_process'
+import { CLI_WORKER_URL, CLI_WORKER_SECRET } from './config.js'
 
 interface ClaudeResponse {
   sessionId: string
   result: string
 }
 
-function runClaude(args: string[]): Promise<ClaudeResponse> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('claude', args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
-
-    let stdout = ''
-    let stderr = ''
-
-    proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString()
-    })
-
-    proc.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString()
-    })
-
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`))
-        return
-      }
-
-      try {
-        const json = JSON.parse(stdout)
-        resolve({
-          sessionId: json.session_id,
-          result: json.result,
-        })
-      } catch {
-        reject(new Error(`Failed to parse Claude response: ${stdout.slice(0, 200)}`))
-      }
-    })
-
-    proc.on('error', (err) => {
-      reject(new Error(`Failed to spawn Claude CLI: ${err.message}`))
-    })
-  })
+function buildHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (CLI_WORKER_SECRET) {
+    headers['Authorization'] = `Bearer ${CLI_WORKER_SECRET}`
+  }
+  return headers
 }
 
 export async function startSession(
   prompt: string,
   systemPrompt: string,
 ): Promise<ClaudeResponse> {
-  return runClaude([
-    '-p', prompt,
-    '--system-prompt', systemPrompt,
-    '--output-format', 'json',
-  ])
+  const res = await fetch(`${CLI_WORKER_URL}/claude/start`, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify({ prompt, systemPrompt }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
+    throw new Error(`CLI worker error: ${body.error ?? res.statusText}`)
+  }
+
+  return res.json() as Promise<ClaudeResponse>
 }
 
 export async function resumeSession(
   sessionId: string,
   prompt: string,
 ): Promise<ClaudeResponse> {
-  return runClaude([
-    '--resume', sessionId,
-    '-p', prompt,
-    '--output-format', 'json',
-  ])
+  const res = await fetch(`${CLI_WORKER_URL}/claude/resume`, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify({ sessionId, prompt }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
+    throw new Error(`CLI worker error: ${body.error ?? res.statusText}`)
+  }
+
+  return res.json() as Promise<ClaudeResponse>
 }

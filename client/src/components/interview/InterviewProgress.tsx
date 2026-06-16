@@ -31,6 +31,13 @@ export function InterviewProgress({
   const [timeLeft, setTimeLeft] = useState(timeLimit)
   const results = useRef<InterviewItem[]>([])
   const startTime = useRef(Date.now())
+  const commitRef = useRef<(text: string | null, timedOut?: boolean) => void>(() => {})
+  const idxRef = useRef(idx)
+  const answerRef = useRef(answer)
+  const onFinishRef = useRef(onFinish)
+  idxRef.current = idx
+  answerRef.current = answer
+  onFinishRef.current = onFinish
 
   const q = questions[idx]
 
@@ -42,7 +49,7 @@ export function InterviewProgress({
       setTimeLeft((prev) => {
         if (prev == null || prev <= 1) {
           clearInterval(interval)
-          commit(null, true)
+          commitRef.current(null, true)
           return 0
         }
         return prev - 1
@@ -54,14 +61,17 @@ export function InterviewProgress({
   // 채점 결과 수신
   useEffect(() => {
     if (!lastEval) return
+    const currentIdx = idxRef.current
+    const currentAnswer = answerRef.current
+    const currentQ = questions[currentIdx]
     const timeTaken = Math.round((Date.now() - startTime.current) / 1000)
     const status = lastEval.score >= 7 ? 'correct' : lastEval.score >= 5 ? 'partial' : 'wrong'
 
     results.current.push({
-      questionId: q.id,
-      question: q.question,
-      category: q.category,
-      answer: answer || null,
+      questionId: currentQ.id,
+      question: currentQ.question,
+      category: currentQ.category,
+      answer: currentAnswer || null,
       score: lastEval.score,
       status,
       feedback: lastEval.feedback,
@@ -72,15 +82,15 @@ export function InterviewProgress({
     setFlash(lastEval)
     setTimeout(() => {
       setFlash(null)
-      if (idx + 1 >= questions.length) {
-        onFinish(results.current)
+      if (currentIdx + 1 >= questions.length) {
+        onFinishRef.current(results.current)
       } else {
-        setIdx(idx + 1)
+        setIdx(currentIdx + 1)
         setAnswer('')
         startTime.current = Date.now()
       }
     }, 1600)
-  }, [lastEval])
+  }, [lastEval, questions])
 
   const commit = useCallback((text: string | null, timedOut = false) => {
     if (timedOut || text === null) {
@@ -113,6 +123,7 @@ export function InterviewProgress({
 
     onEvaluate(q.question, text)
   }, [idx, q, questions.length, onEvaluate, onFinish])
+  commitRef.current = commit
 
   const handleSubmit = () => {
     if (!answer.trim() || evaluating || flash) return
