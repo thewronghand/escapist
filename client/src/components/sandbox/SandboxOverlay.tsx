@@ -95,7 +95,7 @@ export function SandboxOverlay({ onNavigateToPage }: SandboxOverlayProps) {
               className="w-7 h-7 rounded flex items-center justify-center text-ash hover:text-body hover:bg-surface-elevated transition-colors"
               title="전체 화면"
             >
-              <Icon name="arrowright" size={14} />
+              <Icon name="chevright" size={14} />
             </button>
           )}
           <button

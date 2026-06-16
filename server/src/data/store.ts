@@ -4,6 +4,7 @@ import { db } from './db.js'
 const JSON_FIELDS: Record<string, string[]> = {
   questions: ['tags'],
   sessions: ['messages', 'hints', 'categories'],
+  user_profile: ['tech_stack', 'interest_stack', 'ai_tools'],
 }
 
 function parseRow<T>(collection: string, row: Record<string, unknown>): T {
@@ -51,18 +52,29 @@ function serializeForDb(collection: string, data: Record<string, unknown>): Reco
   return snake
 }
 
+const ALLOWED_TABLES = new Set(['questions', 'sessions', 'user_profile'])
+
+function assertTable(collection: string): void {
+  if (!ALLOWED_TABLES.has(collection)) {
+    throw new Error(`허용되지 않은 테이블: ${collection}`)
+  }
+}
+
 export function readAll<T>(collection: string): T[] {
+  assertTable(collection)
   const rows = db.prepare(`SELECT * FROM ${collection}`).all() as Record<string, unknown>[]
   return rows.map((row) => parseRow<T>(collection, row))
 }
 
 export function readOne<T>(collection: string, id: string): T | null {
+  assertTable(collection)
   const row = db.prepare(`SELECT * FROM ${collection} WHERE id = ?`).get(id) as Record<string, unknown> | undefined
   if (!row) return null
   return parseRow<T>(collection, row)
 }
 
-export function writeOne(collection: string, id: string, data: unknown): void {
+export function writeOne(collection: string, _id: string, data: unknown): void {
+  assertTable(collection)
   const serialized = serializeForDb(collection, data as Record<string, unknown>)
 
   // 존재하면 UPDATE, 없으면 INSERT (UPSERT)
@@ -77,6 +89,7 @@ export function writeOne(collection: string, id: string, data: unknown): void {
 }
 
 export function deleteOne(collection: string, id: string): boolean {
+  assertTable(collection)
   const result = db.prepare(`DELETE FROM ${collection} WHERE id = ?`).run(id)
   return result.changes > 0
 }

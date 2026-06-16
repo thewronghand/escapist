@@ -40,6 +40,14 @@ export function EndlessProgress({
   const [flash, setFlash] = useState<{ score: number; survived: boolean } | null>(null)
   const scores = useRef<number[]>([])
   const history = useRef<InterviewItem[]>([])
+  const idxRef = useRef(idx)
+  const streakRef = useRef(streak)
+  const answerRef = useRef(answer)
+  const onGameOverRef = useRef(onGameOver)
+  idxRef.current = idx
+  streakRef.current = streak
+  answerRef.current = answer
+  onGameOverRef.current = onGameOver
 
   const q = questions[idx]
   const remaining = questions.length - idx
@@ -50,14 +58,19 @@ export function EndlessProgress({
   useEffect(() => {
     if (!lastEval) return
 
+    const currentIdx = idxRef.current
+    const currentStreak = streakRef.current
+    const currentAnswer = answerRef.current
+    const currentQ = questions[currentIdx]
+
     const survived = lastEval.score > threshold
     scores.current.push(lastEval.score)
 
     const item: InterviewItem = {
-      questionId: q.id,
-      question: q.question,
-      category: q.category,
-      answer: answer || null,
+      questionId: currentQ.id,
+      question: currentQ.question,
+      category: currentQ.category,
+      answer: currentAnswer || null,
       score: lastEval.score,
       status: survived ? (lastEval.score >= 7 ? 'correct' : 'partial') : 'wrong',
       feedback: lastEval.feedback,
@@ -80,8 +93,8 @@ export function EndlessProgress({
     setTimeout(() => {
       setFlash(null)
       if (!survived) {
-        onGameOver({
-          streak,
+        onGameOverRef.current({
+          streak: currentStreak,
           totalAnswered: scores.current.length,
           averageScore: Math.round(scores.current.reduce((a, b) => a + b, 0) / scores.current.length * 10) / 10,
           cleared: false,
@@ -90,9 +103,9 @@ export function EndlessProgress({
         })
         return
       }
-      if (idx + 1 >= questions.length) {
-        onGameOver({
-          streak: streak + 1,
+      if (currentIdx + 1 >= questions.length) {
+        onGameOverRef.current({
+          streak: currentStreak + 1,
           totalAnswered: scores.current.length,
           averageScore: Math.round(scores.current.reduce((a, b) => a + b, 0) / scores.current.length * 10) / 10,
           cleared: true,
@@ -100,10 +113,10 @@ export function EndlessProgress({
         })
         return
       }
-      setIdx(idx + 1)
+      setIdx(currentIdx + 1)
       setAnswer('')
     }, 1600)
-  }, [lastEval])
+  }, [lastEval, questions, threshold])
 
   const handleSubmit = useCallback(() => {
     if (!answer.trim() || evaluating || flash) return
