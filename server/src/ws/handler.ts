@@ -2,8 +2,9 @@ import type { WebSocket } from 'ws'
 import { v4 as uuid } from 'uuid'
 import { startSession, resumeSession } from '../claude/cli.js'
 import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, buildGeneratorPrompt, type ProfileData } from '../claude/prompts.js'
-import { readAll, readOne, writeOne } from '../data/store.js'
+import { readOne, writeOne } from '../data/store.js'
 import { db } from '../data/db.js'
+import { parseClaudeJson, stripCodeBlock } from '../lib/utils.js'
 
 interface MessageEntry {
   id: string
@@ -62,18 +63,8 @@ interface QuestionRecord {
 }
 
 function tryExtractScore(text: string): number | null {
-  try {
-    // ```json 코드블록 제거
-    let cleaned = text.trim()
-    const codeBlockMatch = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/)
-    if (codeBlockMatch) cleaned = codeBlockMatch[1].trim()
-
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0])
-      if (typeof parsed.score === 'number') return parsed.score
-    }
-  } catch { /* ignore */ }
+  const { parsed } = parseClaudeJson<{ score?: number }>(text)
+  if (parsed && typeof parsed.score === 'number') return parsed.score
   return null
 }
 
@@ -122,9 +113,6 @@ export function handleWsConnection(ws: WebSocket) {
       switch (msg.type) {
         case 'chat:send':
           await handleChatSend(ws, msg)
-          break
-        case 'session:list':
-          await handleSessionList(ws, msg)
           break
         case 'session:load':
           await handleSessionLoad(ws, msg)
@@ -267,27 +255,6 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
     type: 'chat:response',
     message: assistantMsg,
   }))
-}
-
-async function handleSessionList(ws: WebSocket, msg: ClientMessage) {
-  const mode = msg.message ?? 'learn'
-  const sessions = await readAll<Session>('sessions')
-
-  const filtered = sessions
-    .filter((s) => s.mode === mode)
-    .sort((a, b) => (b.lastActivityAt ?? b.createdAt).localeCompare(a.lastActivityAt ?? a.createdAt))
-    .map(({ id, questionId, questionText, mode: m, agent, createdAt, lastActivityAt, messages }) => ({
-      id,
-      questionId,
-      questionText,
-      mode: m,
-      agent,
-      createdAt,
-      lastActivityAt,
-      messageCount: messages?.length ?? 0,
-    }))
-
-  ws.send(JSON.stringify({ type: 'session:list', sessions: filtered }))
 }
 
 async function handleSessionLoad(ws: WebSocket, msg: ClientMessage) {
@@ -462,7 +429,7 @@ async function handleInterviewEval(ws: WebSocket, msg: ClientMessage) {
 
   ws.send(JSON.stringify({
     type: 'interview:evalResult',
-    result: response.result,
+    result: stripCodeBlock(response.result),
   }))
 }
 
@@ -476,13 +443,20 @@ async function handleInterviewSummary(ws: WebSocket, msg: ClientMessage) {
 
   ws.send(JSON.stringify({
     type: 'interview:summaryResult',
-    result: response.result,
+    result: stripCodeBlock(response.result),
   }))
 }
+
+const INTERVIEW_SAVE_FIELDS = ['questions', 'answers', 'scores', 'summary', 'mode', 'categories', 'questionText'] as const
 
 async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
   const data = msg.interviewData as Record<string, unknown> | undefined
   if (!data) return
+
+  const picked: Record<string, unknown> = {}
+  for (const key of INTERVIEW_SAVE_FIELDS) {
+    if (key in data) picked[key] = data[key]
+  }
 
   const id = `iv_${uuid().slice(0, 8)}`
   const session: Session = {
@@ -490,10 +464,10 @@ async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
     claudeSessionId: '',
     questionId: '',
     questionText: '',
-    mode: data.mode as string ?? 'interview',
+    mode: typeof picked.mode === 'string' ? picked.mode : 'interview',
     agent: 'interviewer',
     createdAt: new Date().toISOString(),
-    ...data,
+    ...picked,
   }
   await writeOne('sessions', id, session)
 
@@ -501,15 +475,15 @@ async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
 }
 
 function loadProfile(): ProfileData | null {
-  const row = db.prepare('SELECT * FROM user_profile WHERE id = 1').get() as Record<string, unknown> | undefined
-  if (!row) return null
+  const profile = readOne<ProfileData>('user_profile', '1')
+  if (!profile) return null
   return {
-    jobRole: row.job_role as string ?? 'frontend',
-    experienceLevel: row.experience_level as string ?? 'junior',
-    techStack: JSON.parse(row.tech_stack as string ?? '[]'),
-    interestStack: JSON.parse(row.interest_stack as string ?? '[]'),
-    aiTools: JSON.parse(row.ai_tools as string ?? '[]'),
-    memo: row.memo as string ?? '',
+    jobRole: profile.jobRole ?? 'frontend',
+    experienceLevel: profile.experienceLevel ?? 'junior',
+    techStack: profile.techStack ?? [],
+    interestStack: profile.interestStack ?? [],
+    aiTools: profile.aiTools ?? [],
+    memo: profile.memo ?? '',
   }
 }
 
@@ -545,7 +519,7 @@ async function handleQuestionsGenerate(ws: WebSocket, msg: ClientMessage) {
 
     ws.send(JSON.stringify({
       type: 'questions:generated',
-      result: response.result,
+      result: stripCodeBlock(response.result),
     }))
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Generation failed'

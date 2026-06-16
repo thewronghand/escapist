@@ -53,6 +53,10 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
   const [currentTreeNodeId, setCurrentTreeNodeId] = useState<string>('root')
   const [pendingFollowUp, setPendingFollowUp] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const treeRootRef = useRef(treeRoot)
+  const currentTreeNodeIdRef = useRef(currentTreeNodeId)
+  treeRootRef.current = treeRoot
+  currentTreeNodeIdRef.current = currentTreeNodeId
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -171,11 +175,19 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
     checkQuestion: string
   }
 
+  function isEvaluation(v: Record<string, unknown>): v is Record<string, unknown> & Evaluation {
+    return v.type === 'evaluation' && typeof v.score === 'number' && typeof v.feedback === 'string'
+  }
+
+  function isExplanation(v: Record<string, unknown>): v is Record<string, unknown> & ExplanationResponse {
+    return v.type === 'explanation' && typeof v.content === 'string' && typeof v.checkQuestion === 'string'
+  }
+
   const parseResponse = (text: string): { evaluation?: Evaluation; explanation?: ExplanationResponse } => {
     const { parsed } = parseClaudeJson<Record<string, unknown>>(text)
     if (!parsed) return {}
-    if (parsed.type === 'evaluation') return { evaluation: parsed as unknown as Evaluation }
-    if (parsed.type === 'explanation') return { explanation: parsed as unknown as ExplanationResponse }
+    if (isEvaluation(parsed)) return { evaluation: parsed }
+    if (isExplanation(parsed)) return { explanation: parsed }
     return {}
   }
 
@@ -195,14 +207,15 @@ export function LearnPage({ chat, sessions, view, setView, onSessionCreated }: L
     if (lastEvaluation.followUpQuestions?.length && followUps.length === 0) {
       setFollowUps(lastEvaluation.followUpQuestions)
     }
-    if (treeRoot && lastEvaluation.score != null) {
+    if (treeRootRef.current && lastEvaluation.score != null) {
+      const nodeId = currentTreeNodeIdRef.current
       const updateScore = (node: FollowUpNode): FollowUpNode => {
-        if (node.id === currentTreeNodeId) {
+        if (node.id === nodeId) {
           return { ...node, score: lastEvaluation.score, status: 'answered' }
         }
         return { ...node, children: node.children.map(updateScore) }
       }
-      setTreeRoot(updateScore(treeRoot))
+      setTreeRoot(updateScore(treeRootRef.current))
     }
   }, [lastMessage?.id])
 

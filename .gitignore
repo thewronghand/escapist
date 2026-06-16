@@ -7,7 +7,8 @@ dist/
 .DS_Store
 *.local
 
-# 하네스 문서 (로컬 전용)
+# 하네스 (로컬 전용 — voltron-personal에서 sync)
+.claude/
 CLAUDE.md
 DESIGN.md
 PRODUCT.md
