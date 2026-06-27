@@ -4,6 +4,8 @@ Claude CLI 세션 기반 면접 준비 앱.
 
 질문을 등록하고, Claude가 면접관이 되어 답변을 평가하고 꼬리질문으로 깊이를 파고든다.
 
+**배포 URL**: https://escapist.onrender.com
+
 ## 주요 기능
 
 - **학습 모드** — 질문 선택 → 답변 → Claude 면접관이 평가(점수/개선점/모범답안) → 꼬리질문 분기
@@ -20,14 +22,14 @@ Claude CLI 세션 기반 면접 준비 앱.
 | 서버 | Node.js, Fastify v5, tRPC, WebSocket |
 | AI | Claude CLI (`claude -p`, `--resume`) via cli-worker |
 | 데이터 | Turso (SQLite 호환 클라우드 DB) |
-| 배포 | Railway (서버 + 프론트) + 맥북 PM2 (cli-worker) |
+| 배포 | Render (서버 + 프론트) + 맥북 PM2 (cli-worker) |
 
 ## 배포 아키텍처
 
 ```
 [폰/브라우저]
     ↓ HTTPS
-[Railway 클라우드]
+[Render 클라우드]
   ├── Fastify API + tRPC      (:8888)
   ├── React 정적 파일 서빙
   └── Turso DB
@@ -59,7 +61,7 @@ pnpm dev
 
 - 프론트엔드: http://localhost:5180
 - 서버: http://localhost:8888
-- cli-worker: :8889 (별도 터미널)
+- cli-worker: 서버에 WS 자동 연결 (별도 포트 없음)
 
 ## 배포
 
@@ -67,35 +69,23 @@ pnpm dev
 
 ```bash
 turso db create escapist
-turso db show escapist        # URL 확인
-turso db tokens create escapist  # 토큰 발급
+turso db show escapist           # TURSO_DATABASE_URL 확인
+turso db tokens create escapist  # TURSO_AUTH_TOKEN 발급
 ```
 
-### 2. Railway 배포
+### 2. Render 배포
 
-1. Railway 프로젝트 생성 후 GitHub 레포 연결
-2. 환경변수 설정 (`.env.example` 참조):
+1. [render.com](https://render.com) → New Web Service → GitHub 레포 연결
+2. Build Command: `npm install --no-save pnpm@10.12.4 && ./node_modules/.bin/pnpm install --frozen-lockfile && ./node_modules/.bin/pnpm build`
+3. Start Command: `npx pnpm@10.12.4 --filter @escapist/server exec tsx src/index.ts`
+4. 환경변수 설정 (`.env.example` 참조):
    - `JWT_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `ALLOWED_EMAIL`
    - `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
    - `CLI_WORKER_SECRET`
-3. 배포 트리거 → Railway가 Dockerfile 빌드 후 자동 배포
 
 ### 3. 맥북 cli-worker 실행
 
-```bash
-# .env 파일 생성 (packages/cli-worker/.env.example 참조)
-cp packages/cli-worker/.env.example packages/cli-worker/.env
-# WS_SERVER_URL과 CLI_WORKER_SECRET 설정
-
-# PM2로 시작
-cd packages/cli-worker
-npx pm2 start ecosystem.config.cjs
-npx pm2 save
-npx pm2 startup  # 부팅 자동 시작 설정
-
-# 맥북 잠자기 방지 (선택)
-caffeinate -i &
-```
+`packages/cli-worker/SETUP.md` 참조.
 
 ## 환경변수
 
