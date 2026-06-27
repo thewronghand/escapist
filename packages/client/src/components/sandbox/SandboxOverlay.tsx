@@ -1,6 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
-import { useIsMobile } from '@thewrong/ui'
 import { useSandbox } from '@/hooks/useSandbox'
+
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 639px)').matches : false
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const update = (e: MediaQueryListEvent) => setMobile(e.matches)
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  return mobile
+}
 import { Icon } from '@/components/ui/Icon'
 import { SandboxChat } from '@/components/sandbox/SandboxChat'
 import { SandboxInput } from '@/components/sandbox/SandboxInput'
