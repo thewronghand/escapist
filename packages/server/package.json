@@ -17,6 +17,7 @@
     "@escapist/shared": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.1",
+    "@fastify/static": "^9.1.3",
     "@fastify/websocket": "^11.0.2",
     "@libsql/client": "^0.17.4",
     "@trpc/server": "^11.18.0",

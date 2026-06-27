@@ -2,7 +2,9 @@ import Fastify from 'fastify'
 import fastifyCookie from '@fastify/cookie'
 import fastifyCors from '@fastify/cors'
 import fastifyWebsocket from '@fastify/websocket'
+import fastifyStatic from '@fastify/static'
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify'
+import path from 'path'
 import { questionsPlugin } from './routes/questions.js'
 import { statsPlugin } from './routes/stats.js'
 import { sessionsPlugin } from './routes/sessions.js'
@@ -22,6 +24,15 @@ const app = Fastify({ loggerInstance: logger })
 await app.register(fastifyCookie)
 await app.register(fastifyCors, { origin: true, credentials: true })
 await app.register(fastifyWebsocket)
+
+// 프로덕션에서 client 빌드 결과물 서빙
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(import.meta.dirname, '../../client/dist')
+  await app.register(fastifyStatic, {
+    root: clientDist,
+    wildcard: false,
+  })
+}
 
 await app.register(authPlugin, { prefix: '/api/auth' })
 
@@ -60,7 +71,15 @@ app.get('/worker', { websocket: true }, (socket, req) => {
   handleWorkerConnection(socket, req.headers.authorization)
 })
 
-const PORT = 8888
+// SPA fallback — React Router가 처리하는 경로를 index.html로
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(import.meta.dirname, '../../client/dist')
+  app.setNotFoundHandler((_req, reply) => {
+    reply.sendFile('index.html', clientDist)
+  })
+}
+
+const PORT = Number(process.env.PORT ?? 8888)
 await app.listen({ port: PORT, host: '0.0.0.0' })
 logger.info(`Escapist server running on http://localhost:${PORT}`)
 
