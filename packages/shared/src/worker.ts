@@ -2,11 +2,9 @@ export const WorkerEvent = {
   // server → worker
   START: 'worker:start',
   RESUME: 'worker:resume',
-  PING: 'worker:ping',
   // worker → server
   RESULT: 'worker:result',
   ERROR: 'worker:error',
-  PONG: 'worker:pong',
 } as const
 
 export type WorkerEventType = typeof WorkerEvent[keyof typeof WorkerEvent]

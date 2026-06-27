@@ -46,7 +46,6 @@ export function handleWorkerConnection(socket: WebSocket, authHeader: string | u
       return
     }
 
-    if (msg.type === WorkerEvent.PONG) return
     if (!msg.requestId) return
 
     const entry = pending.get(msg.requestId)
@@ -62,6 +61,7 @@ export function handleWorkerConnection(socket: WebSocket, authHeader: string | u
   })
 
   socket.on('close', () => {
+    if (workerSocket !== socket) return
     workerSocket = null
     logger.warn('cli-worker 연결 끊김')
     for (const { reject } of pending.values()) {

@@ -8,11 +8,9 @@ const SERVER_URL = process.env.WS_SERVER_URL ?? 'ws://localhost:8888/worker'
 const WORKER_SECRET = process.env.CLI_WORKER_SECRET ?? ''
 const RECONNECT_BASE_MS = 1_000
 const RECONNECT_MAX_MS = 30_000
-const PING_INTERVAL_MS = 30_000
 
 let reconnectDelay = RECONNECT_BASE_MS
 let ws: WebSocket | null = null
-let pingTimer: ReturnType<typeof setInterval> | null = null
 
 function connect() {
   const headers: Record<string, string> = {}
@@ -23,12 +21,6 @@ function connect() {
   ws.on('open', () => {
     logger.info({ url: SERVER_URL }, 'CLI worker → 서버 WS 연결 완료')
     reconnectDelay = RECONNECT_BASE_MS
-
-    pingTimer = setInterval(() => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: WorkerEvent.PONG }))
-      }
-    }, PING_INTERVAL_MS)
   })
 
   ws.on('message', async (raw) => {
@@ -76,7 +68,6 @@ function connect() {
   })
 
   ws.on('close', (code, reason) => {
-    if (pingTimer) { clearInterval(pingTimer); pingTimer = null }
     logger.warn({ code, reason: reason.toString() }, `WS 연결 끊김 — ${reconnectDelay / 1000}s 후 재연결`)
     scheduleReconnect()
   })
