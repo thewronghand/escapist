@@ -1,4 +1,5 @@
 import { spawn } from 'child_process'
+import { logger } from './logger.js'
 
 const TIMEOUT_MS = 120_000
 const MAX_BUFFER_BYTES = 10 * 1024 * 1024
@@ -46,6 +47,7 @@ function runClaude(args: string[]): Promise<ClaudeResponse> {
       if (killed) return
       killed = true
       proc.kill()
+      logger.error({ reason }, 'Claude CLI 프로세스 강제 종료')
       reject(new Error(reason))
     }
 
@@ -76,6 +78,7 @@ function runClaude(args: string[]): Promise<ClaudeResponse> {
       if (killed) return
 
       if (code !== 0) {
+        logger.error({ code, stderr: stderr.slice(0, 500) }, 'Claude CLI 비정상 종료')
         reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`))
         return
       }
@@ -109,6 +112,7 @@ export async function startSession(
   prompt: string,
   systemPrompt: string,
 ): Promise<ClaudeResponse> {
+  logger.info({ promptLength: prompt.length }, 'Claude 세션 시작')
   return runClaude([
     '-p', prompt,
     '--system-prompt', systemPrompt,
@@ -120,6 +124,7 @@ export async function resumeSession(
   sessionId: string,
   prompt: string,
 ): Promise<ClaudeResponse> {
+  logger.info({ sessionId, promptLength: prompt.length }, 'Claude 세션 재개')
   return runClaude([
     '--resume', sessionId,
     '-p', prompt,
