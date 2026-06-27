@@ -11,8 +11,10 @@ import {
 } from './config.js'
 import { logger } from '../lib/logger.js'
 
-function getRedirectUri(req: { protocol: string; hostname: string }): string {
-  return `${req.protocol}://${req.hostname}/api/auth/callback`
+function getRedirectUri(req: { protocol: string; hostname: string; headers: Record<string, string | string[] | undefined> }): string {
+  // Render 등 프록시 환경에서 실제 프로토콜을 x-forwarded-proto 헤더로 판단
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined) ?? req.protocol
+  return `${proto}://${req.hostname}/api/auth/callback`
 }
 
 export async function authPlugin(fastify: FastifyInstance): Promise<void> {
