@@ -37,6 +37,10 @@ function runClaude(args: string[]): Promise<ClaudeResponse> {
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
+    // claude -p는 stdin 입력을 받지 않지만, stdin이 열려 있으면 EOF를
+    // 기다리며 멈춘다(특히 PM2처럼 TTY가 없는 환경). 즉시 닫아 응답을 받는다.
+    proc.stdin.end()
+
     let stdout = ''
     let stderr = ''
     let stdoutBytes = 0

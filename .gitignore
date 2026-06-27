@@ -1,4 +1,6 @@
 .envrc
+.env
+logs/
 node_modules/
 *.db
 *.db-wal
