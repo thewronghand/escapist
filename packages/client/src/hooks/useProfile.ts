@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import type { UserProfile } from '@/types'
+import { trpc } from '@/lib/trpc'
 
 const DEFAULT_PROFILE: UserProfile = {
   jobRole: 'frontend',
@@ -11,47 +12,19 @@ const DEFAULT_PROFILE: UserProfile = {
 }
 
 export function useProfile() {
-  const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/profile')
-      if (res.ok) {
-        const data = await res.json() as UserProfile
-        setProfile(data)
-      }
-    } catch (err) {
-      console.error('Failed to load profile:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  const { data: profile = DEFAULT_PROFILE, isLoading: loading, refetch } = trpc.profile.get.useQuery()
+  const updateMutation = trpc.profile.update.useMutation({
+    onSuccess: () => { void refetch() },
+  })
 
   const save = useCallback(async (data: UserProfile) => {
-    setSaving(true)
     try {
-      const res = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (res.ok) {
-        const saved = await res.json() as UserProfile
-        setProfile(saved)
-        return true
-      }
-    } catch (err) {
-      console.error('Failed to save profile:', err)
-    } finally {
-      setSaving(false)
+      await updateMutation.mutateAsync(data)
+      return true
+    } catch {
+      return false
     }
-    return false
-  }, [])
+  }, [updateMutation])
 
-  return { profile, loading, saving, save, reload: load }
+  return { profile, loading, saving: updateMutation.isPending, save, reload: refetch }
 }

@@ -132,6 +132,46 @@ export interface ClientMessage {
   generateCount?: number
 }
 
+export interface WeakQuestion {
+  id: string
+  question: string
+  category: string
+  averageScore: number
+  attempts: number
+}
+
+export interface CategoryStat {
+  category: string
+  count: number
+  avg: number
+}
+
+export interface ScoreTrendPoint {
+  day: string
+  score: number
+}
+
+export interface ActivityItem {
+  mode: string
+  title: string
+  score?: number
+  grade?: string
+  streak?: number
+  time: string
+}
+
+export interface Stats {
+  totalQuestions: number
+  mastered: number
+  avgScore: number
+  todayLearned: number
+  bestStreak: number
+  weakQuestions: WeakQuestion[]
+  categoryStats: CategoryStat[]
+  scoreTrend: ScoreTrendPoint[]
+  recentActivity: ActivityItem[]
+}
+
 export interface QuestionRecord {
   id: string
   bestScore: number | null

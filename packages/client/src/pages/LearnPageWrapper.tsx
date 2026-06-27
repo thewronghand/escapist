@@ -1,14 +1,14 @@
 import { useEffect } from 'react'
 import { useAtom } from 'jotai'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { LearnPage } from '@/pages/LearnPage'
 import { useChat } from '@/hooks/useChat'
-import { sessionsQuery } from '@/stores/queries'
+import { trpc } from '@/lib/trpc'
 import { learnViewAtom } from '@/stores/chat'
 
 export function LearnPageWrapper() {
   const chat = useChat()
-  const { data: sessions = [] } = useQuery(sessionsQuery('learn'))
+  const { data: sessions = [] } = trpc.sessions.list.useQuery({ mode: 'learn' })
   const [learnView, setLearnView] = useAtom(learnViewAtom)
   const queryClient = useQueryClient()
 

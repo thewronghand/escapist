@@ -1,40 +1,35 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import type { Question } from '@/types'
-import { fetchQuestions, createQuestion, deleteQuestion } from '@/lib/api'
+import { trpc } from '@/lib/trpc'
 
 export function useQuestions() {
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await fetchQuestions()
-      setQuestions(data)
-    } catch (err) {
-      console.error('Failed to load questions:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  const { data: questions = [], isLoading: loading, refetch } = trpc.questions.list.useQuery()
+  const createMutation = trpc.questions.create.useMutation({
+    onSuccess: () => { void refetch() },
+  })
+  const deleteMutation = trpc.questions.delete.useMutation({
+    onSuccess: () => { void refetch() },
+  })
 
   const add = useCallback(async (data: {
     question: string
     category: string
     tags?: string[]
     difficulty?: number
+    interviewType?: string
   }) => {
-    const q = await createQuestion(data)
-    setQuestions((prev) => [...prev, q])
-    return q
-  }, [])
+    return createMutation.mutateAsync({
+      question: data.question,
+      category: data.category,
+      tags: data.tags,
+      difficulty: data.difficulty,
+      interviewType: (data.interviewType ?? 'technical') as Question['interviewType'],
+    })
+  }, [createMutation])
 
   const remove = useCallback(async (id: string) => {
-    await deleteQuestion(id)
-    setQuestions((prev) => prev.filter((q) => q.id !== id))
-  }, [])
+    await deleteMutation.mutateAsync({ id })
+  }, [deleteMutation])
 
-  return { questions, loading, reload: load, add, remove }
+  return { questions, loading, reload: refetch, add, remove }
 }

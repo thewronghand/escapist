@@ -16,6 +16,11 @@ export type {
   StoredSession,
   ClientMessage,
   QuestionRecord,
+  Stats,
+  WeakQuestion,
+  CategoryStat,
+  ScoreTrendPoint,
+  ActivityItem,
 } from '@escapist/shared'
 
 export {

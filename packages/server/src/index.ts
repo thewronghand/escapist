@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import fastifyCookie from '@fastify/cookie'
 import fastifyCors from '@fastify/cors'
 import fastifyWebsocket from '@fastify/websocket'
+import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify'
 import { questionsPlugin } from './routes/questions.js'
 import { statsPlugin } from './routes/stats.js'
 import { sessionsPlugin } from './routes/sessions.js'
@@ -12,6 +13,8 @@ import { logger } from './lib/logger.js'
 import { authPlugin } from './auth/routes.js'
 import { authGuardHook, extractUserFromCookie } from './auth/middleware.js'
 import { GOOGLE_CLIENT_ID } from './auth/config.js'
+import { appRouter } from './trpc/router.js'
+import { createContext } from './trpc/context.js'
 
 const app = Fastify({ loggerInstance: logger })
 
@@ -38,6 +41,11 @@ await app.register(questionsPlugin, { prefix: '/api/questions', ...apiOptions })
 await app.register(statsPlugin, { prefix: '/api/stats', ...apiOptions })
 await app.register(sessionsPlugin, { prefix: '/api/sessions', ...apiOptions })
 await app.register(profilePlugin, { prefix: '/api/profile', ...apiOptions })
+
+await app.register(fastifyTRPCPlugin, {
+  prefix: '/api/trpc',
+  trpcOptions: { router: appRouter, createContext },
+})
 
 app.get('/ws', { websocket: true }, (socket, req) => {
   if (GOOGLE_CLIENT_ID) {

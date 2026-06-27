@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { send, subscribe } from '@/lib/ws'
 import { parseClaudeJson } from '@/lib/utils'
-import { createQuestion } from '@/lib/api'
+import { trpc } from '@/lib/trpc'
 import type { InterviewType } from '@/types'
 
 interface GeneratedQuestion {
@@ -16,6 +16,8 @@ export function useQuestionGenerator() {
   const [generating, setGenerating] = useState(false)
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  const createMutation = trpc.questions.create.useMutation()
 
   useEffect(() => {
     const unsub = subscribe((data) => {
@@ -57,14 +59,14 @@ export function useQuestionGenerator() {
   }, [])
 
   const saveQuestion = useCallback(async (q: GeneratedQuestion) => {
-    return createQuestion({
+    return createMutation.mutateAsync({
       question: q.question,
       category: q.category,
       tags: q.tags,
       difficulty: q.difficulty,
       interviewType: q.interviewType,
     })
-  }, [])
+  }, [createMutation])
 
   const saveAll = useCallback(async () => {
     const results = []
