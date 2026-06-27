@@ -142,11 +142,11 @@ export function SandboxOverlay({ onNavigateToPage }: SandboxOverlayProps) {
           onClick={() => setOpen(false)}
           style={{ animation: 'esc-fade-in 0.2s ease both' }}
         />
-        {/* 하단 틈 방지: -bottom-8 + pb-8 */}
+        {/* BottomNav(약 56px) 위에서 시작, 하단 틈 방지: -bottom-8 + pb-8 */}
         <div
           className="fixed left-0 right-0 -bottom-8 z-50 flex flex-col bg-surface border-t border-hairline rounded-t-2xl pb-8 overflow-hidden"
           style={{
-            maxHeight: '88dvh',
+            height: 'calc(85dvh - 56px)',
             animation: 'esc-rise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both',
           }}
         >
