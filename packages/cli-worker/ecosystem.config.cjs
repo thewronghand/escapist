@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'escapist-worker',
       script: 'node',
-      args: '--import tsx/esm src/index.ts',
+      args: '--env-file=.env --import tsx/esm src/index.ts',
       cwd: __dirname,
       interpreter: 'none',
       env: {
