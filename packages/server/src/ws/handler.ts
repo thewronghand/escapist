@@ -152,7 +152,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
 
     // 질문 점수 업데이트
     const score = tryExtractScore(response.result)
-    if (score !== null) updateQuestionScore(msg.questionId ?? '', score)
+    if (score !== null) await updateQuestionScore(msg.questionId ?? '', score)
 
     ws.send(JSON.stringify({
       type: 'session:created',
@@ -193,7 +193,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
 
   // 질문 점수 업데이트
   const score = tryExtractScore(response.result)
-  if (score !== null) updateQuestionScore(session.questionId, score)
+  if (score !== null) await updateQuestionScore(session.questionId, score)
 
   ws.send(JSON.stringify({
     type: 'chat:response',
