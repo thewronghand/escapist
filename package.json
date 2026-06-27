@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.12.4",
   "scripts": {
     "dev": "concurrently -n client,server,worker -c blue,green,yellow \"pnpm --filter @escapist/client dev\" \"pnpm --filter @escapist/server dev\" \"pnpm --filter @escapist/cli-worker dev\"",
-    "build": "pnpm --filter @escapist/shared build && pnpm --filter @escapist/client build && pnpm --filter @escapist/server build",
+    "build": "pnpm --filter @escapist/client build && pnpm --filter @escapist/server build",
     "typecheck": "pnpm -r --parallel typecheck"
   },
   "pnpm": {
