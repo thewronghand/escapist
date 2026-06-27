@@ -5,62 +5,7 @@ import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, buildGeneratorPrompt, t
 import { readOne, writeOne } from '../data/store.js'
 import { db } from '../data/db.js'
 import { parseClaudeJson, stripCodeBlock } from '../lib/utils.js'
-
-interface MessageEntry {
-  id: string
-  role: string
-  text: string
-  agent?: string
-  timestamp: string
-}
-
-interface HintEntry {
-  level: number
-  content: string
-  createdAt: string
-}
-
-interface Session {
-  id: string
-  claudeSessionId: string
-  questionId: string
-  questionText: string
-  mode: string
-  agent: string
-  messages?: MessageEntry[]
-  hints?: HintEntry[]
-  hintSessionId?: string
-  createdAt: string
-  lastActivityAt?: string
-}
-
-interface ClientMessage {
-  type: string
-  sessionId?: string
-  questionId?: string
-  questionText?: string
-  message?: string
-  agent?: string
-  hintLevel?: number
-  sandboxId?: string
-  // 면접/무한 채점용
-  questionForEval?: string
-  answerForEval?: string
-  interviewData?: Record<string, unknown>
-  interviewType?: string
-  // 질문 자동 생성용
-  generateType?: string
-  generateCount?: number
-}
-
-interface QuestionRecord {
-  id: string
-  bestScore: number | null
-  averageScore: number | null
-  attempts: number
-  status: string
-  lastAttemptAt: string | null
-}
+import type { MessageEntry, HintEntry, StoredSession, ClientMessage, QuestionRecord } from '@escapist/shared'
 
 function tryExtractScore(text: string): number | null {
   const { parsed } = parseClaudeJson<{ score?: number }>(text)
@@ -93,7 +38,7 @@ function updateQuestionScore(questionId: string, score: number): void {
   })
 }
 
-function appendMessage(session: Session, msg: MessageEntry): Session {
+function appendMessage(session: StoredSession, msg: MessageEntry): StoredSession {
   session.messages = [...(session.messages ?? []), msg]
   session.lastActivityAt = new Date().toISOString()
   return session
@@ -193,7 +138,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
     const userMsg: MessageEntry = { id: uuid(), role: isSkip ? 'skip' : 'user', text: isSkip ? '모르겠다' : (msg.message ?? ''), timestamp: now }
     const assistantMsg: MessageEntry = { id: uuid(), role: agent, agent, text: response.result, timestamp: now }
 
-    const session: Session = {
+    const session: StoredSession = {
       id: sessionId,
       claudeSessionId: response.sessionId,
       questionId: msg.questionId ?? '',
@@ -224,7 +169,7 @@ async function handleChatSend(ws: WebSocket, msg: ClientMessage) {
   }
 
   // 기존 세션 이어가기
-  const session = await readOne<Session>('sessions', msg.sessionId)
+  const session = await readOne<StoredSession>('sessions', msg.sessionId)
   if (!session) {
     ws.send(JSON.stringify({ type: 'chat:error', error: 'Session not found' }))
     return
@@ -263,7 +208,7 @@ async function handleSessionLoad(ws: WebSocket, msg: ClientMessage) {
     return
   }
 
-  const session = await readOne<Session>('sessions', msg.sessionId)
+  const session = await readOne<StoredSession>('sessions', msg.sessionId)
   if (!session) {
     ws.send(JSON.stringify({ type: 'chat:error', error: 'Session not found' }))
     return
@@ -290,7 +235,7 @@ async function handleHintRequest(ws: WebSocket, msg: ClientMessage) {
   const questionText = msg.questionText ?? ''
 
   const hintDataId = `hints_${questionId}`
-  let hintData = await readOne<Session>('sessions', hintDataId)
+  let hintData = await readOne<StoredSession>('sessions', hintDataId)
 
   const level = (hintData?.hints?.length ?? 0) + 1
   if (level > 5) {
@@ -345,7 +290,7 @@ async function handleHintRequest(ws: WebSocket, msg: ClientMessage) {
 async function handleHintLoad(ws: WebSocket, msg: ClientMessage) {
   const questionId = msg.questionId ?? ''
   const hintDataId = `hints_${questionId}`
-  const hintData = await readOne<Session>('sessions', hintDataId)
+  const hintData = await readOne<StoredSession>('sessions', hintDataId)
 
   ws.send(JSON.stringify({
     type: 'hint:loaded',
@@ -366,7 +311,7 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
     const userMsg: MessageEntry = { id: uuid(), role: 'user', text: userText, timestamp: now }
     const assistantMsg: MessageEntry = { id: uuid(), role: 'assistant', text: response.result, timestamp: now }
 
-    const session: Session = {
+    const session: StoredSession = {
       id: sandboxId,
       claudeSessionId: response.sessionId,
       questionId: '',
@@ -387,7 +332,7 @@ async function handleSandboxSend(ws: WebSocket, msg: ClientMessage) {
     return
   }
 
-  const session = await readOne<Session>('sessions', msg.sandboxId)
+  const session = await readOne<StoredSession>('sessions', msg.sandboxId)
   if (!session) {
     ws.send(JSON.stringify({ type: 'chat:error', error: 'Sandbox session not found' }))
     return
@@ -459,7 +404,7 @@ async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
   }
 
   const id = `iv_${uuid().slice(0, 8)}`
-  const session: Session = {
+  const session: StoredSession = {
     id,
     claudeSessionId: '',
     questionId: '',

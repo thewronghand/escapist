@@ -1,21 +1,7 @@
 import { Router } from 'express'
 import { v4 as uuid } from 'uuid'
 import { readAll, readOne, writeOne, deleteOne } from '../data/store.js'
-
-interface Question {
-  id: string
-  question: string
-  category: string
-  interviewType: string
-  tags: string[]
-  difficulty: number
-  status: 'unlearned' | 'learning' | 'weak' | 'master'
-  bestScore: number | null
-  averageScore: number | null
-  attempts: number
-  createdAt: string
-  lastAttemptAt: string | null
-}
+import type { Question } from '@escapist/shared'
 
 export const questionsRouter = Router()
 

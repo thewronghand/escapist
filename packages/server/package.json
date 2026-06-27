@@ -1,12 +1,14 @@
 {
-  "name": "escapist-server",
+  "name": "@escapist/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@escapist/shared": "workspace:*",
     "better-sqlite3": "^12.10.0",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
