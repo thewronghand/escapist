@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useAtom } from 'jotai'
-import { useQueryClient } from '@tanstack/react-query'
 import { LearnPage } from '@/pages/LearnPage'
 import { useChat } from '@/hooks/useChat'
 import { trpc } from '@/lib/trpc'
@@ -10,7 +9,7 @@ export function LearnPageWrapper() {
   const chat = useChat()
   const { data: sessions = [] } = trpc.sessions.list.useQuery({ mode: 'learn' })
   const [learnView, setLearnView] = useAtom(learnViewAtom)
-  const queryClient = useQueryClient()
+  const utils = trpc.useUtils()
 
   // 학습 탭 진입 시 세션이 없으면 select로 리셋
   useEffect(() => {
@@ -25,7 +24,7 @@ export function LearnPageWrapper() {
       sessions={sessions}
       view={learnView}
       setView={setLearnView}
-      onSessionCreated={() => queryClient.invalidateQueries({ queryKey: ['sessions'] })}
+      onSessionCreated={() => { void utils.sessions.list.invalidate() }}
     />
   )
 }

@@ -26,5 +26,5 @@ export function useProfile() {
     }
   }, [updateMutation])
 
-  return { profile, loading, saving: updateMutation.isPending, save, reload: refetch }
+  return { profile, loading, saving: updateMutation.isPending, save, reload: () => { void refetch() } }
 }

@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./trpc": "./src/trpc/router.ts"
+    "./trpc": {
+      "import": "./dist/trpc/router.js",
+      "types": "./dist/trpc/router.d.ts"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

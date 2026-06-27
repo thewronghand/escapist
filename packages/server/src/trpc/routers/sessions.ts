@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init.js'
 import { db } from '../../data/db.js'
 import type { SessionSummary } from '@escapist/shared'
@@ -31,7 +32,7 @@ export const sessionsRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(({ input }) => {
       const result = db.prepare('DELETE FROM sessions WHERE id = ?').run(input.id)
-      if (result.changes === 0) throw new Error('Session not found')
+      if (result.changes === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Session not found' })
       return { ok: true }
     }),
 })

@@ -1,9 +1,9 @@
-import Database from 'better-sqlite3'
+import Database, { type Database as DatabaseType } from 'better-sqlite3'
 import path from 'path'
 
 const DB_PATH = path.resolve(import.meta.dirname, '../../data/escapist.db')
 
-const db = new Database(DB_PATH)
+const db: DatabaseType = new Database(DB_PATH)
 
 // WAL 모드 (동시 읽기 성능 향상)
 db.pragma('journal_mode = WAL')

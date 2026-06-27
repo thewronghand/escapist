@@ -10,6 +10,6 @@ export function useStats() {
     stats,
     loading,
     error: queryError ? (queryError instanceof Error ? queryError.message : '통계를 불러올 수 없습니다') : null,
-    reload: refetch,
+    reload: () => { void refetch() },
   }
 }

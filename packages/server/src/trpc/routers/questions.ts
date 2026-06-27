@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { v4 as uuid } from 'uuid'
+import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init.js'
 import { readAll, readOne, writeOne, deleteOne } from '../../data/store.js'
 import type { Question } from '@escapist/shared'
@@ -11,7 +12,7 @@ export const questionsRouter = router({
     .input(z.object({ id: z.string() }))
     .query(({ input }) => {
       const q = readOne<Question>('questions', input.id)
-      if (!q) throw new Error('Not found')
+      if (!q) throw new TRPCError({ code: 'NOT_FOUND' })
       return q
     }),
 
@@ -46,7 +47,7 @@ export const questionsRouter = router({
     }))
     .mutation(({ input }) => {
       const existing = readOne<Question>('questions', input.id)
-      if (!existing) throw new Error('Not found')
+      if (!existing) throw new TRPCError({ code: 'NOT_FOUND' })
       const updated = { ...existing, ...input.data, id: existing.id }
       writeOne('questions', existing.id, updated)
       return updated
@@ -56,7 +57,7 @@ export const questionsRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(({ input }) => {
       const deleted = deleteOne('questions', input.id)
-      if (!deleted) throw new Error('Not found')
+      if (!deleted) throw new TRPCError({ code: 'NOT_FOUND' })
       return { ok: true }
     }),
 })

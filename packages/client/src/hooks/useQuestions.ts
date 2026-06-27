@@ -31,5 +31,5 @@ export function useQuestions() {
     await deleteMutation.mutateAsync({ id })
   }, [deleteMutation])
 
-  return { questions, loading, reload: refetch, add, remove }
+  return { questions, loading, reload: () => { void refetch() }, add, remove }
 }
