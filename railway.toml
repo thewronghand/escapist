@@ -2,7 +2,6 @@
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "node --import tsx/esm packages/server/src/index.ts"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
