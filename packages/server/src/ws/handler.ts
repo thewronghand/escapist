@@ -1,4 +1,4 @@
-import type { WebSocket } from 'ws'
+import type { WebSocket } from '@fastify/websocket'
 import { v4 as uuid } from 'uuid'
 import { startSession, resumeSession } from '../claude/cli.js'
 import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, buildGeneratorPrompt, type ProfileData } from '../claude/prompts.js'
@@ -45,7 +45,7 @@ function appendMessage(session: StoredSession, msg: MessageEntry): StoredSession
 }
 
 export function handleWsConnection(ws: WebSocket) {
-  ws.on('message', async (raw) => {
+  ws.on('message', async (raw: Buffer | string) => {
     let msg: ClientMessage
     try {
       msg = JSON.parse(raw.toString())

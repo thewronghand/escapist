@@ -1,30 +1,27 @@
-import express from 'express'
-import { createServer } from 'http'
-import { WebSocketServer } from 'ws'
-import pinoHttp from 'pino-http'
-import cookieParser from 'cookie-parser'
-import { questionsRouter } from './routes/questions.js'
-import { statsRouter } from './routes/stats.js'
-import { sessionsRouter } from './routes/sessions.js'
-import { profileRouter } from './routes/profile.js'
+import Fastify from 'fastify'
+import fastifyCookie from '@fastify/cookie'
+import fastifyCors from '@fastify/cors'
+import fastifyWebsocket from '@fastify/websocket'
+import { questionsPlugin } from './routes/questions.js'
+import { statsPlugin } from './routes/stats.js'
+import { sessionsPlugin } from './routes/sessions.js'
+import { profilePlugin } from './routes/profile.js'
 import { handleWsConnection } from './ws/handler.js'
 import { CLI_WORKER_URL } from './claude/config.js'
 import { logger } from './lib/logger.js'
-import { authRouter } from './auth/routes.js'
-import { authGuard, extractUserFromCookie } from './auth/middleware.js'
+import { authPlugin } from './auth/routes.js'
+import { authGuardHook, extractUserFromCookie } from './auth/middleware.js'
 import { GOOGLE_CLIENT_ID } from './auth/config.js'
 
-const app = express()
-const server = createServer(app)
-const wss = new WebSocketServer({ server, path: '/ws' })
+const app = Fastify({ loggerInstance: logger })
 
-app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/api/health' } }))
-app.use(cookieParser())
-app.use(express.json())
+await app.register(fastifyCookie)
+await app.register(fastifyCors, { origin: true, credentials: true })
+await app.register(fastifyWebsocket)
 
-app.use('/api/auth', authRouter)
+await app.register(authPlugin, { prefix: '/api/auth' })
 
-app.get('/api/health', async (_req, res) => {
+app.get('/api/health', async () => {
   let cliWorker = false
   try {
     const r = await fetch(`${CLI_WORKER_URL}/health`)
@@ -32,34 +29,28 @@ app.get('/api/health', async (_req, res) => {
   } catch (err) {
     logger.warn({ err }, 'CLI worker 연결 실패')
   }
-
-  res.json({ status: 'ok', cliWorker })
+  return { status: 'ok', cliWorker }
 })
 
-if (GOOGLE_CLIENT_ID) {
-  app.use('/api/questions', authGuard, questionsRouter)
-  app.use('/api/stats', authGuard, statsRouter)
-  app.use('/api/sessions', authGuard, sessionsRouter)
-  app.use('/api/profile', authGuard, profileRouter)
-} else {
-  app.use('/api/questions', questionsRouter)
-  app.use('/api/stats', statsRouter)
-  app.use('/api/sessions', sessionsRouter)
-  app.use('/api/profile', profileRouter)
-}
+const apiOptions = GOOGLE_CLIENT_ID ? { onRequest: [authGuardHook] } : {}
 
-wss.on('connection', (ws, req) => {
+await app.register(questionsPlugin, { prefix: '/api/questions', ...apiOptions })
+await app.register(statsPlugin, { prefix: '/api/stats', ...apiOptions })
+await app.register(sessionsPlugin, { prefix: '/api/sessions', ...apiOptions })
+await app.register(profilePlugin, { prefix: '/api/profile', ...apiOptions })
+
+app.get('/ws', { websocket: true }, (socket, req) => {
   if (GOOGLE_CLIENT_ID) {
-    const user = extractUserFromCookie(req.headers.cookie)
+    const cookieHeader = req.headers.cookie
+    const user = extractUserFromCookie(typeof cookieHeader === 'string' ? cookieHeader : undefined)
     if (!user) {
-      ws.close(4001, 'Unauthorized')
+      socket.close(4001, 'Unauthorized')
       return
     }
   }
-  handleWsConnection(ws)
+  handleWsConnection(socket)
 })
 
 const PORT = 8888
-server.listen(PORT, () => {
-  logger.info(`Escapist server running on http://localhost:${PORT}`)
-})
+await app.listen({ port: PORT, host: '0.0.0.0' })
+logger.info(`Escapist server running on http://localhost:${PORT}`)
