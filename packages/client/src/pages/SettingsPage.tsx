@@ -80,7 +80,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   }
 
   return (
-    <div className="max-w-[640px] mx-auto px-10 pt-10 pb-16 overflow-auto h-full">
+    <div className="max-w-[640px] mx-auto px-4 sm:px-10 pt-6 sm:pt-10 pb-16 overflow-auto h-full">
       <div className="flex items-center gap-3 mb-8">
         <button onClick={onBack} className="text-ash hover:text-body transition-colors">
           <Icon name="chevleft" size={18} />

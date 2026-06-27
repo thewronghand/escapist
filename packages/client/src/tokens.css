@@ -144,6 +144,10 @@ input, textarea, select { font-family: inherit; font-feature-settings: var(--fea
   from { background-position: 0 0; }
   to { background-position: 120px 0; }
 }
+@keyframes esc-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
 
 .esc-fade { animation: esc-fade-in 0.35s ease both; }
 .esc-rise { animation: esc-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }

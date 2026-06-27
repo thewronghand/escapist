@@ -66,14 +66,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const hasTrend = stats.scoreTrend.length > 0
 
   return (
-    <div className="max-w-[1080px] mx-auto px-10 pt-10 pb-16 overflow-auto h-full">
+    <div className="max-w-[1080px] mx-auto px-4 sm:px-10 pt-6 sm:pt-10 pb-16 overflow-auto h-full">
 
       {/* ─── 히어로: 로고 크게 → CTA → 숫자 한 줄 ─── */}
-      <div className="mb-14">
+      <div className="mb-8 sm:mb-14">
         <img src="/assets/logo-horizontal.svg" alt="Escapist" className="h-16 mb-3" />
         <p className="text-ash text-[12px] italic tracking-wide mb-6">"The only way out is through."</p>
 
-        <div className="flex gap-3 mb-8">
+        <div className="flex flex-wrap gap-3 mb-8">
           <Button variant="primary" icon="mic" onClick={() => onNavigate?.('interview')}>면접 시작</Button>
           <Button variant="tertiary" icon="infinity" onClick={() => onNavigate?.('endless')}>무한 모드</Button>
           <Button variant="tertiary" icon="book" onClick={() => onNavigate?.('learn')}>학습</Button>
@@ -101,7 +101,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
 
       {/* ─── 약한 질문 + 카테고리 ─── */}
-      <div className="grid grid-cols-[3fr_2fr] gap-10 mb-14">
+      <div className="grid grid-cols-1 sm:grid-cols-[3fr_2fr] gap-6 sm:gap-10 mb-10 sm:mb-14">
         <div>
           <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">약한 질문</h2>
           {stats.weakQuestions.length === 0 ? (
@@ -163,7 +163,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ─── 차트 + 활동 ─── */}
       {(hasTrend || hasActivity) ? (
-        <div className={`grid gap-10 ${hasTrend && hasActivity ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`grid gap-6 sm:gap-10 ${hasTrend && hasActivity ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
           {hasTrend && (
             <div>
               <h2 className="text-mute text-[12px] font-medium uppercase tracking-wider mb-3">면접 추이</h2>
