@@ -2,10 +2,9 @@ import type { WebSocket } from '@fastify/websocket'
 import { v4 as uuid } from 'uuid'
 import { startSession, resumeSession } from '../claude/cli.js'
 import { getPromptForAgent, HINT_PROMPT, SANDBOX_PROMPT, buildGeneratorPrompt, type ProfileData } from '../claude/prompts.js'
-import { readOne, writeOne } from '../data/store.js'
-import { db } from '../data/db.js'
+import { readAll, readOne, writeOne } from '../data/store.js'
 import { parseClaudeJson, stripCodeBlock } from '../lib/utils.js'
-import type { MessageEntry, HintEntry, StoredSession, ClientMessage, QuestionRecord } from '@escapist/shared'
+import type { MessageEntry, HintEntry, StoredSession, ClientMessage, QuestionRecord, UserProfile } from '@escapist/shared'
 
 function tryExtractScore(text: string): number | null {
   const { parsed } = parseClaudeJson<{ score?: number }>(text)
@@ -13,9 +12,9 @@ function tryExtractScore(text: string): number | null {
   return null
 }
 
-function updateQuestionScore(questionId: string, score: number): void {
+async function updateQuestionScore(questionId: string, score: number): Promise<void> {
   if (!questionId) return
-  const question = readOne<QuestionRecord>('questions', questionId)
+  const question = await readOne<QuestionRecord>('questions', questionId)
   if (!question) return
 
   const attempts = (question.attempts ?? 0) + 1
@@ -28,7 +27,7 @@ function updateQuestionScore(questionId: string, score: number): void {
   else if (newAvg < 5) status = 'weak'
   else status = 'learning'
 
-  writeOne('questions', questionId, {
+  await writeOne('questions', questionId, {
     ...question,
     bestScore,
     averageScore: newAvg,
@@ -419,8 +418,8 @@ async function handleInterviewSave(ws: WebSocket, msg: ClientMessage) {
   ws.send(JSON.stringify({ type: 'interview:saved', id }))
 }
 
-function loadProfile(): ProfileData | null {
-  const profile = readOne<ProfileData>('user_profile', '1')
+async function loadProfile(): Promise<ProfileData | null> {
+  const profile = await readOne<UserProfile>('user_profile', '1')
   if (!profile) return null
   return {
     jobRole: profile.jobRole ?? 'frontend',
@@ -438,11 +437,11 @@ async function handleQuestionsGenerate(ws: WebSocket, msg: ClientMessage) {
 
   ws.send(JSON.stringify({ type: 'questions:generating' }))
 
-  const profile = loadProfile()
+  const profile = await loadProfile()
   const systemPrompt = buildGeneratorPrompt(profile)
 
   // 기존 질문 목록 로드 → 중복 방지
-  const existingQuestions = db.prepare('SELECT question FROM questions').all() as Array<{ question: string }>
+  const existingQuestions = await readAll<{ question: string }>('questions')
   const existingList = existingQuestions.map((q) => q.question)
   const dedupeClause = existingList.length > 0
     ? `\n\n## 이미 등록된 질문 (중복 금지)\n${existingList.map((q) => `- ${q}`).join('\n')}\n\n위 질문과 동일하거나 매우 유사한 질문은 절대 생성하지 마세요.`

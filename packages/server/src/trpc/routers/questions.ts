@@ -10,8 +10,8 @@ export const questionsRouter = router({
 
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(({ input }) => {
-      const q = readOne<Question>('questions', input.id)
+    .query(async ({ input }) => {
+      const q = await readOne<Question>('questions', input.id)
       if (!q) throw new TRPCError({ code: 'NOT_FOUND' })
       return q
     }),
@@ -24,7 +24,7 @@ export const questionsRouter = router({
       difficulty: z.number().min(1).max(5).default(3),
       interviewType: z.enum(['technical', 'behavioral', 'opinion']).default('technical'),
     }))
-    .mutation(({ input }) => {
+    .mutation(async ({ input }) => {
       const id = `q_${uuid().slice(0, 8)}`
       const newQuestion: Question = {
         id,
@@ -36,7 +36,7 @@ export const questionsRouter = router({
         createdAt: new Date().toISOString(),
         lastAttemptAt: null,
       }
-      writeOne('questions', id, newQuestion)
+      await writeOne('questions', id, newQuestion)
       return newQuestion
     }),
 
@@ -45,18 +45,18 @@ export const questionsRouter = router({
       id: z.string(),
       data: z.record(z.string(), z.unknown()),
     }))
-    .mutation(({ input }) => {
-      const existing = readOne<Question>('questions', input.id)
+    .mutation(async ({ input }) => {
+      const existing = await readOne<Question>('questions', input.id)
       if (!existing) throw new TRPCError({ code: 'NOT_FOUND' })
       const updated = { ...existing, ...input.data, id: existing.id }
-      writeOne('questions', existing.id, updated)
+      await writeOne('questions', existing.id, updated)
       return updated
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(({ input }) => {
-      const deleted = deleteOne('questions', input.id)
+    .mutation(async ({ input }) => {
+      const deleted = await deleteOne('questions', input.id)
       if (!deleted) throw new TRPCError({ code: 'NOT_FOUND' })
       return { ok: true }
     }),

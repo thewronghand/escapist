@@ -1,6 +1,6 @@
 import { db } from './db.js'
+import type { InValue } from '@libsql/client'
 
-// JSON 필드를 파싱하는 헬퍼
 const JSON_FIELDS: Record<string, string[]> = {
   questions: ['tags'],
   sessions: ['messages', 'hints', 'categories'],
@@ -19,14 +19,13 @@ function parseRow<T>(collection: string, row: Record<string, unknown>): T {
       }
     }
   }
-  // snake_case → camelCase 변환
   return snakeToCamel(parsed) as T
 }
 
 function snakeToCamel(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const [key, val] of Object.entries(obj)) {
-    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+    const camelKey = key.replace(/_([a-z])/g, (_, c) => (c as string).toUpperCase())
     result[camelKey] = val
   }
   return result
@@ -60,24 +59,23 @@ function assertTable(collection: string): void {
   }
 }
 
-export function readAll<T>(collection: string): T[] {
+export async function readAll<T>(collection: string): Promise<T[]> {
   assertTable(collection)
-  const rows = db.prepare(`SELECT * FROM ${collection}`).all() as Record<string, unknown>[]
-  return rows.map((row) => parseRow<T>(collection, row))
+  const rs = await db.execute(`SELECT * FROM ${collection}`)
+  return rs.rows.map((row) => parseRow<T>(collection, row as unknown as Record<string, unknown>))
 }
 
-export function readOne<T>(collection: string, id: string): T | null {
+export async function readOne<T>(collection: string, id: string): Promise<T | null> {
   assertTable(collection)
-  const row = db.prepare(`SELECT * FROM ${collection} WHERE id = ?`).get(id) as Record<string, unknown> | undefined
-  if (!row) return null
-  return parseRow<T>(collection, row)
+  const rs = await db.execute({ sql: `SELECT * FROM ${collection} WHERE id = ?`, args: [id] })
+  if (rs.rows.length === 0) return null
+  return parseRow<T>(collection, rs.rows[0] as unknown as Record<string, unknown>)
 }
 
-export function writeOne(collection: string, _id: string, data: unknown): void {
+export async function writeOne(collection: string, _id: string, data: unknown): Promise<void> {
   assertTable(collection)
   const serialized = serializeForDb(collection, data as Record<string, unknown>)
 
-  // 존재하면 UPDATE, 없으면 INSERT (UPSERT)
   const columns = Object.keys(serialized)
   const placeholders = columns.map(() => '?').join(', ')
   const updates = columns.map((c) => `${c} = excluded.${c}`).join(', ')
@@ -85,11 +83,11 @@ export function writeOne(collection: string, _id: string, data: unknown): void {
   const sql = `INSERT INTO ${collection} (${columns.join(', ')}) VALUES (${placeholders})
     ON CONFLICT(id) DO UPDATE SET ${updates}`
 
-  db.prepare(sql).run(...columns.map((c) => serialized[c] ?? null))
+  await db.execute({ sql, args: columns.map((c) => (serialized[c] ?? null) as InValue) })
 }
 
-export function deleteOne(collection: string, id: string): boolean {
+export async function deleteOne(collection: string, id: string): Promise<boolean> {
   assertTable(collection)
-  const result = db.prepare(`DELETE FROM ${collection} WHERE id = ?`).run(id)
-  return result.changes > 0
+  const rs = await db.execute({ sql: `DELETE FROM ${collection} WHERE id = ?`, args: [id] })
+  return rs.rowsAffected > 0
 }

@@ -5,11 +5,11 @@ import type { Question } from '@escapist/shared'
 
 export async function questionsPlugin(fastify: FastifyInstance): Promise<void> {
   fastify.get('/', async () => {
-    return readAll<Question>('questions')
+    return await readAll<Question>('questions')
   })
 
   fastify.get<{ Params: { id: string } }>('/:id', async (req, reply) => {
-    const question = readOne<Question>('questions', req.params.id)
+    const question = await readOne<Question>('questions', req.params.id)
     if (!question) {
       reply.code(404).send({ error: 'Not found' })
       return
@@ -42,25 +42,25 @@ export async function questionsPlugin(fastify: FastifyInstance): Promise<void> {
         lastAttemptAt: null,
       }
 
-      writeOne('questions', id, newQuestion)
+      await writeOne('questions', id, newQuestion)
       reply.code(201).send(newQuestion)
     },
   )
 
   fastify.put<{ Params: { id: string }; Body: Record<string, unknown> }>('/:id', async (req, reply) => {
-    const existing = readOne<Question>('questions', req.params.id)
+    const existing = await readOne<Question>('questions', req.params.id)
     if (!existing) {
       reply.code(404).send({ error: 'Not found' })
       return
     }
 
     const updated = { ...existing, ...req.body, id: existing.id }
-    writeOne('questions', existing.id, updated)
+    await writeOne('questions', existing.id, updated)
     return updated
   })
 
   fastify.delete<{ Params: { id: string } }>('/:id', async (req, reply) => {
-    const deleted = deleteOne('questions', req.params.id)
+    const deleted = await deleteOne('questions', req.params.id)
     if (!deleted) {
       reply.code(404).send({ error: 'Not found' })
       return

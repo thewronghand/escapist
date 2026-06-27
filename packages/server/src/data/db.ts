@@ -1,16 +1,17 @@
-import Database, { type Database as DatabaseType } from 'better-sqlite3'
+import { createClient } from '@libsql/client'
 import path from 'path'
 
-const DB_PATH = path.resolve(import.meta.dirname, '../../data/escapist.db')
+const url = process.env.TURSO_DATABASE_URL
+  ?? `file:${path.resolve(import.meta.dirname, '../../data/escapist.db')}`
 
-const db: DatabaseType = new Database(DB_PATH)
+const authToken = process.env.TURSO_AUTH_TOKEN
 
-// WAL 모드 (동시 읽기 성능 향상)
-db.pragma('journal_mode = WAL')
-db.pragma('foreign_keys = ON')
+export const db = createClient({ url, authToken })
 
-// 테이블 생성
-db.exec(`
+await db.executeMultiple(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA foreign_keys = ON;
+
   CREATE TABLE IF NOT EXISTS questions (
     id TEXT PRIMARY KEY,
     question TEXT NOT NULL,
@@ -63,5 +64,3 @@ db.exec(`
   );
   INSERT OR IGNORE INTO user_profile (id) VALUES (1);
 `)
-
-export { db }

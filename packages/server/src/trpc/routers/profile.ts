@@ -28,9 +28,9 @@ const DEFAULT_PROFILE: UserProfile = {
 }
 
 export const profileRouter = router({
-  get: protectedProcedure.query((): UserProfile => {
-    const row = db.prepare('SELECT * FROM user_profile WHERE id = 1').get() as Record<string, unknown> | undefined
-    return row ? parseRow(row) : DEFAULT_PROFILE
+  get: protectedProcedure.query(async (): Promise<UserProfile> => {
+    const rs = await db.execute('SELECT * FROM user_profile WHERE id = 1')
+    return rs.rows.length > 0 ? parseRow(rs.rows[0] as unknown as Record<string, unknown>) : DEFAULT_PROFILE
   }),
 
   update: protectedProcedure
@@ -42,27 +42,23 @@ export const profileRouter = router({
       aiTools: z.array(z.string()).optional(),
       memo: z.string().optional(),
     }))
-    .mutation(({ input }) => {
-      db.prepare(`
-        UPDATE user_profile SET
-          job_role = ?,
-          experience_level = ?,
-          tech_stack = ?,
-          interest_stack = ?,
-          ai_tools = ?,
-          memo = ?,
-          updated_at = ?
-        WHERE id = 1
-      `).run(
-        input.jobRole ?? 'frontend',
-        input.experienceLevel ?? 'junior',
-        JSON.stringify(input.techStack ?? []),
-        JSON.stringify(input.interestStack ?? []),
-        JSON.stringify(input.aiTools ?? []),
-        input.memo ?? '',
-        new Date().toISOString(),
-      )
-      const row = db.prepare('SELECT * FROM user_profile WHERE id = 1').get() as Record<string, unknown>
-      return parseRow(row)
+    .mutation(async ({ input }) => {
+      await db.execute({
+        sql: `UPDATE user_profile SET
+          job_role = ?, experience_level = ?, tech_stack = ?,
+          interest_stack = ?, ai_tools = ?, memo = ?, updated_at = ?
+          WHERE id = 1`,
+        args: [
+          input.jobRole ?? 'frontend',
+          input.experienceLevel ?? 'junior',
+          JSON.stringify(input.techStack ?? []),
+          JSON.stringify(input.interestStack ?? []),
+          JSON.stringify(input.aiTools ?? []),
+          input.memo ?? '',
+          new Date().toISOString(),
+        ],
+      })
+      const rs = await db.execute('SELECT * FROM user_profile WHERE id = 1')
+      return parseRow(rs.rows[0] as unknown as Record<string, unknown>)
     }),
 })
