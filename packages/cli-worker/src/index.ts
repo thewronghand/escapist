@@ -1,80 +1,97 @@
-import express, { type Request, type Response, type NextFunction } from 'express'
+import WebSocket from 'ws'
 import { startSession, resumeSession } from './cli.js'
 import { logger } from './logger.js'
+import type { WorkerRequest, WorkerResponse } from '@escapist/shared'
+import { WorkerEvent } from '@escapist/shared'
 
-const app = express()
-app.use(express.json({ limit: '1mb' }))
-
+const SERVER_URL = process.env.WS_SERVER_URL ?? 'ws://localhost:8888/worker'
 const WORKER_SECRET = process.env.CLI_WORKER_SECRET ?? ''
+const RECONNECT_BASE_MS = 1_000
+const RECONNECT_MAX_MS = 30_000
+const PING_INTERVAL_MS = 30_000
 
-if (!WORKER_SECRET && process.env.NODE_ENV === 'production') {
-  logger.fatal('CLI_WORKER_SECRET must be set in production')
-  process.exit(1)
+let reconnectDelay = RECONNECT_BASE_MS
+let ws: WebSocket | null = null
+let pingTimer: ReturnType<typeof setInterval> | null = null
+
+function connect() {
+  const headers: Record<string, string> = {}
+  if (WORKER_SECRET) headers['Authorization'] = `Bearer ${WORKER_SECRET}`
+
+  ws = new WebSocket(SERVER_URL, { headers })
+
+  ws.on('open', () => {
+    logger.info({ url: SERVER_URL }, 'CLI worker → 서버 WS 연결 완료')
+    reconnectDelay = RECONNECT_BASE_MS
+
+    pingTimer = setInterval(() => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: WorkerEvent.PONG }))
+      }
+    }, PING_INTERVAL_MS)
+  })
+
+  ws.on('message', async (raw) => {
+    let req: WorkerRequest
+    try {
+      req = JSON.parse(raw.toString()) as WorkerRequest
+    } catch {
+      logger.warn('잘못된 메시지 수신')
+      return
+    }
+
+    logger.info({ type: req.type, requestId: req.requestId }, 'Claude 요청 수신')
+
+    try {
+      let result
+      if (req.type === WorkerEvent.START) {
+        result = await startSession(req.prompt, req.systemPrompt)
+      } else if (req.type === WorkerEvent.RESUME) {
+        result = await resumeSession(req.sessionId, req.prompt)
+      } else {
+        return
+      }
+
+      const response: WorkerResponse = {
+        type: WorkerEvent.RESULT,
+        requestId: req.requestId,
+        sessionId: result.sessionId,
+        result: result.result,
+      }
+      ws?.send(JSON.stringify(response))
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Unknown error'
+      logger.error({ err, requestId: req.requestId }, 'Claude 처리 실패')
+      const response: WorkerResponse = {
+        type: WorkerEvent.ERROR,
+        requestId: req.requestId,
+        error,
+      }
+      ws?.send(JSON.stringify(response))
+    }
+  })
+
+  ws.on('ping', () => {
+    ws?.pong()
+  })
+
+  ws.on('close', (code, reason) => {
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null }
+    logger.warn({ code, reason: reason.toString() }, `WS 연결 끊김 — ${reconnectDelay / 1000}s 후 재연결`)
+    scheduleReconnect()
+  })
+
+  ws.on('error', (err) => {
+    logger.error({ err }, 'WS 에러')
+  })
 }
 
-if (!WORKER_SECRET) {
-  logger.warn('CLI_WORKER_SECRET이 설정되지 않았습니다. 모든 요청이 허용됩니다.')
+function scheduleReconnect() {
+  setTimeout(() => {
+    connect()
+    reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS)
+  }, reconnectDelay)
 }
 
-function authGuard(req: Request, res: Response, next: NextFunction): void {
-  if (!WORKER_SECRET) {
-    next()
-    return
-  }
-
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '')
-  if (token !== WORKER_SECRET) {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-  next()
-}
-
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'cli-worker' })
-})
-
-app.post('/claude/start', authGuard, async (req: Request, res: Response) => {
-  const body = req.body as Record<string, unknown>
-  const prompt = typeof body.prompt === 'string' ? body.prompt : ''
-  const systemPrompt = typeof body.systemPrompt === 'string' ? body.systemPrompt : ''
-
-  if (!prompt || !systemPrompt) {
-    res.status(400).json({ error: 'prompt and systemPrompt are required' })
-    return
-  }
-
-  try {
-    const result = await startSession(prompt, systemPrompt)
-    res.json(result)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    logger.error({ err }, 'claude/start 실패')
-    res.status(500).json({ error: message })
-  }
-})
-
-app.post('/claude/resume', authGuard, async (req: Request, res: Response) => {
-  const body = req.body as Record<string, unknown>
-  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : ''
-  const prompt = typeof body.prompt === 'string' ? body.prompt : ''
-
-  if (!sessionId || !prompt) {
-    res.status(400).json({ error: 'sessionId and prompt are required' })
-    return
-  }
-
-  try {
-    const result = await resumeSession(sessionId, prompt)
-    res.json(result)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    logger.error({ err, sessionId }, 'claude/resume 실패')
-    res.status(500).json({ error: message })
-  }
-})
-
-const PORT = Number(process.env.CLI_WORKER_PORT ?? 8889)
-app.listen(PORT, () => {
-  logger.info(`Escapist CLI worker running on http://localhost:${PORT}`)
-})
+logger.info('Escapist CLI worker 시작')
+connect()

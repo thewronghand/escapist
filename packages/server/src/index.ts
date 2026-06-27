@@ -8,11 +8,12 @@ import { statsPlugin } from './routes/stats.js'
 import { sessionsPlugin } from './routes/sessions.js'
 import { profilePlugin } from './routes/profile.js'
 import { handleWsConnection } from './ws/handler.js'
-import { CLI_WORKER_URL } from './claude/config.js'
+import { handleWorkerConnection, isWorkerConnected } from './claude/worker-bridge.js'
 import { logger } from './lib/logger.js'
 import { authPlugin } from './auth/routes.js'
 import { authGuardHook, extractUserFromCookie } from './auth/middleware.js'
 import { GOOGLE_CLIENT_ID } from './auth/config.js'
+import { CLI_WORKER_SECRET } from './claude/config.js'
 import { appRouter } from './trpc/router.js'
 import { createContext } from './trpc/context.js'
 
@@ -24,16 +25,10 @@ await app.register(fastifyWebsocket)
 
 await app.register(authPlugin, { prefix: '/api/auth' })
 
-app.get('/api/health', async () => {
-  let cliWorker = false
-  try {
-    const r = await fetch(`${CLI_WORKER_URL}/health`)
-    cliWorker = r.ok
-  } catch (err) {
-    logger.warn({ err }, 'CLI worker 연결 실패')
-  }
-  return { status: 'ok', cliWorker }
-})
+app.get('/api/health', async () => ({
+  status: 'ok',
+  cliWorker: isWorkerConnected(),
+}))
 
 const apiOptions = GOOGLE_CLIENT_ID ? { onRequest: [authGuardHook] } : {}
 
@@ -47,6 +42,7 @@ await app.register(fastifyTRPCPlugin, {
   trpcOptions: { router: appRouter, createContext },
 })
 
+// 사용자 클라이언트 WS
 app.get('/ws', { websocket: true }, (socket, req) => {
   if (GOOGLE_CLIENT_ID) {
     const cookieHeader = req.headers.cookie
@@ -59,6 +55,16 @@ app.get('/ws', { websocket: true }, (socket, req) => {
   handleWsConnection(socket)
 })
 
+// cli-worker WS 연결
+app.get('/worker', { websocket: true }, (socket, req) => {
+  handleWorkerConnection(socket, req.headers.authorization)
+})
+
 const PORT = 8888
 await app.listen({ port: PORT, host: '0.0.0.0' })
 logger.info(`Escapist server running on http://localhost:${PORT}`)
+
+// cli-worker에 사용할 환경변수 힌트 (개발용)
+if (!CLI_WORKER_SECRET) {
+  logger.warn('CLI_WORKER_SECRET 미설정 — /worker 엔드포인트가 인증 없이 열려있습니다')
+}
