@@ -8,11 +8,8 @@ const authToken = process.env.TURSO_AUTH_TOKEN
 
 export const db = createClient({ url, authToken })
 
-await db.executeMultiple(`
-  PRAGMA journal_mode = WAL;
-  PRAGMA foreign_keys = ON;
-
-  CREATE TABLE IF NOT EXISTS questions (
+await db.batch([
+  `CREATE TABLE IF NOT EXISTS questions (
     id TEXT PRIMARY KEY,
     question TEXT NOT NULL,
     category TEXT NOT NULL,
@@ -25,11 +22,10 @@ await db.executeMultiple(`
     attempts INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     last_attempt_at TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
-  CREATE INDEX IF NOT EXISTS idx_questions_status ON questions(status);
-
-  CREATE TABLE IF NOT EXISTS sessions (
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category)',
+  'CREATE INDEX IF NOT EXISTS idx_questions_status ON questions(status)',
+  `CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     claude_session_id TEXT DEFAULT '',
     question_id TEXT DEFAULT '',
@@ -48,11 +44,10 @@ await db.executeMultiple(`
     categories TEXT,
     created_at TEXT NOT NULL,
     last_activity_at TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_sessions_mode ON sessions(mode);
-  CREATE INDEX IF NOT EXISTS idx_sessions_question_id ON sessions(question_id);
-
-  CREATE TABLE IF NOT EXISTS user_profile (
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_sessions_mode ON sessions(mode)',
+  'CREATE INDEX IF NOT EXISTS idx_sessions_question_id ON sessions(question_id)',
+  `CREATE TABLE IF NOT EXISTS user_profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     job_role TEXT DEFAULT 'frontend',
     experience_level TEXT DEFAULT 'junior',
@@ -61,6 +56,6 @@ await db.executeMultiple(`
     ai_tools TEXT DEFAULT '[]',
     memo TEXT DEFAULT '',
     updated_at TEXT
-  );
-  INSERT OR IGNORE INTO user_profile (id) VALUES (1);
-`)
+  )`,
+  'INSERT OR IGNORE INTO user_profile (id) VALUES (1)',
+], 'write')
