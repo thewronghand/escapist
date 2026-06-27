@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from 'express'
 import { startSession, resumeSession } from './cli.js'
+import { logger } from './logger.js'
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -7,12 +8,12 @@ app.use(express.json({ limit: '1mb' }))
 const WORKER_SECRET = process.env.CLI_WORKER_SECRET ?? ''
 
 if (!WORKER_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('[FATAL] CLI_WORKER_SECRET must be set in production')
+  logger.fatal('CLI_WORKER_SECRET must be set in production')
   process.exit(1)
 }
 
 if (!WORKER_SECRET) {
-  console.warn('[WARN] CLI_WORKER_SECRET이 설정되지 않았습니다. 모든 요청이 허용됩니다.')
+  logger.warn('CLI_WORKER_SECRET이 설정되지 않았습니다. 모든 요청이 허용됩니다.')
 }
 
 function authGuard(req: Request, res: Response, next: NextFunction): void {
@@ -48,6 +49,7 @@ app.post('/claude/start', authGuard, async (req: Request, res: Response) => {
     res.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
+    logger.error({ err }, 'claude/start 실패')
     res.status(500).json({ error: message })
   }
 })
@@ -67,11 +69,12 @@ app.post('/claude/resume', authGuard, async (req: Request, res: Response) => {
     res.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
+    logger.error({ err, sessionId }, 'claude/resume 실패')
     res.status(500).json({ error: message })
   }
 })
 
 const PORT = Number(process.env.CLI_WORKER_PORT ?? 8889)
 app.listen(PORT, () => {
-  console.log(`Escapist CLI worker running on http://localhost:${PORT}`)
+  logger.info(`Escapist CLI worker running on http://localhost:${PORT}`)
 })
