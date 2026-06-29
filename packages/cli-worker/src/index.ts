@@ -1,7 +1,8 @@
 import WebSocket from 'ws'
+import { exec } from 'child_process'
 import { startSession, resumeSession } from './cli.js'
 import { logger } from './logger.js'
-import type { WorkerRequest, WorkerResponse } from '@escapist/shared'
+import type { WorkerRequest, WorkerResponse, WorkerLogReport } from '@escapist/shared'
 import { WorkerEvent } from '@escapist/shared'
 
 const SERVER_URL = process.env.WS_SERVER_URL ?? 'ws://localhost:8888/worker'
@@ -21,6 +22,7 @@ function connect() {
   ws.on('open', () => {
     logger.info({ url: SERVER_URL }, 'CLI worker → 서버 WS 연결 완료')
     reconnectDelay = RECONNECT_BASE_MS
+    sendPm2Logs()
   })
 
   ws.on('message', async (raw) => {
@@ -82,6 +84,21 @@ function scheduleReconnect() {
     connect()
     reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS)
   }, reconnectDelay)
+}
+
+function sendPm2Logs() {
+  exec('pm2 logs --lines 100 --nostream --raw 2>&1', { timeout: 10_000 }, (err, stdout) => {
+    if (err) {
+      logger.warn({ err }, 'PM2 로그 읽기 실패 — PM2 미설치 또는 권한 없음')
+      return
+    }
+    const lines = stdout.split('\n').filter((l) => l.trim().length > 0)
+    if (lines.length === 0) return
+
+    const report: WorkerLogReport = { type: WorkerEvent.LOG_REPORT, lines }
+    ws?.send(JSON.stringify(report))
+    logger.debug({ count: lines.length }, 'PM2 로그 전송')
+  })
 }
 
 logger.info('Escapist CLI worker 시작')
