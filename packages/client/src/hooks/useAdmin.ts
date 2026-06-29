@@ -24,12 +24,18 @@ export function useAdmin() {
     },
   })
 
-  const sendCommand = (command: AdminCommandType, payload?: string) => {
-    sendCommandMutation.mutate({ command, payload })
+  const sendCommand = (command: AdminCommandType, payload?: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      sendCommandMutation.mutate(
+        { command, payload },
+        { onSuccess: (data) => resolve(data.commandId), onError: () => resolve(null) },
+      )
+    })
   }
 
   return {
     adminSessionConnected: statusQuery.data?.adminSessionConnected ?? false,
+    managerSessionId: statusQuery.data?.managerSessionId ?? null,
     statusLoading: statusQuery.isLoading,
     logs: logsQuery.data?.lines ?? [],
     logsLoading: logsQuery.isLoading,

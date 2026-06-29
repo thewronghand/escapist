@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAdmin } from '@/hooks/useAdmin'
 import { useWorkerStatus } from '@/hooks/useWorkerStatus'
 import { Button } from '@/components/ui/Button'
@@ -15,6 +15,13 @@ const CUSTOM_COMMANDS = [
   'pnpm --version',
 ] as const
 
+interface ChatMessage {
+  id: string
+  role: 'user' | 'manager'
+  text: string
+  pending?: boolean
+}
+
 interface AdminPageProps {
   onBack: () => void
 }
@@ -23,6 +30,7 @@ export function AdminPage({ onBack }: AdminPageProps) {
   const workerConnected = useWorkerStatus()
   const {
     adminSessionConnected,
+    managerSessionId,
     statusLoading,
     logs,
     logsLoading,
@@ -33,9 +41,54 @@ export function AdminPage({ onBack }: AdminPageProps) {
   } = useAdmin()
 
   const [customCmd, setCustomCmd] = useState<string>(CUSTOM_COMMANDS[0])
+  const [chatInput, setChatInput] = useState('')
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const chatBottomRef = useRef<HTMLDivElement>(null)
 
-  const handleCustom = () => {
-    sendCommand('custom', customCmd)
+  // 새 메시지 오면 스크롤
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages])
+
+  // 최근 명령에서 message 타입 응답 감지해서 채팅에 반영
+  useEffect(() => {
+    const msgCommands = recentCommands.filter((c) => c.command === 'message' && c.result)
+    for (const cmd of msgCommands) {
+      const cmdResult = cmd.result
+      if (!cmdResult) continue
+      setChatMessages((prev) => {
+        const alreadyAdded = prev.some((m) => m.id === `res-${cmd.commandId}`)
+        if (alreadyAdded) return prev
+        const without = prev.filter((m) => m.id !== `pending-${cmd.commandId}`)
+        return [
+          ...without,
+          {
+            id: `res-${cmd.commandId}`,
+            role: 'manager',
+            text: cmdResult.success ? cmdResult.output : `오류: ${cmdResult.output}`,
+          },
+        ]
+      })
+    }
+  }, [recentCommands])
+
+  const handleSendMessage = async () => {
+    const text = chatInput.trim()
+    if (!text || !adminSessionConnected || !managerSessionId) return
+
+    setChatInput('')
+    setChatMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: 'user', text },
+    ])
+
+    const commandId = await sendCommand('message', text)
+    if (commandId) {
+      setChatMessages((prev) => [
+        ...prev,
+        { id: `pending-${commandId}`, role: 'manager', text: '...', pending: true },
+      ])
+    }
   }
 
   return (
@@ -61,7 +114,69 @@ export function AdminPage({ onBack }: AdminPageProps) {
             connected={adminSessionConnected}
             loading={statusLoading}
           />
+          <StatusRow
+            label="관제 Claude 세션"
+            connected={!!managerSessionId}
+            loading={statusLoading}
+            sub={managerSessionId ? `ID: ${managerSessionId.slice(0, 12)}…` : undefined}
+          />
         </div>
+      </section>
+
+      {/* 관제 세션 채팅 */}
+      <section className="mb-8">
+        <h2 className="text-[13px] text-mute uppercase tracking-wider mb-3">관제 세션</h2>
+        {!managerSessionId ? (
+          <p className="text-[13px] text-mute">
+            관제 Claude 세션이 준비되지 않았습니다. 관리 세션이 연결되면 자동으로 시작됩니다.
+          </p>
+        ) : (
+          <>
+            <div className="bg-surface-card border border-hairline rounded-md p-4 min-h-[200px] max-h-[400px] overflow-y-auto flex flex-col gap-3 mb-3">
+              {chatMessages.length === 0 ? (
+                <p className="text-[13px] text-mute">메시지를 보내보세요.</p>
+              ) : (
+                chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] ${
+                      msg.role === 'user'
+                        ? 'bg-surface-elevated text-ink'
+                        : 'bg-canvas border border-hairline text-body'
+                    } ${msg.pending ? 'animate-pulse' : ''}`}>
+                      <pre className="whitespace-pre-wrap font-sans">{msg.text}</pre>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
+                placeholder="관제 세션에 메시지 보내기..."
+                className="flex-1 bg-surface-elevated border border-hairline rounded-md px-3 py-2 text-[14px] text-body placeholder-stone focus:outline-none focus:border-hairline-strong"
+                disabled={!adminSessionConnected || !managerSessionId}
+              />
+              <Button
+                variant="primary"
+                onClick={handleSendMessage}
+                disabled={isSending || !adminSessionConnected || !managerSessionId || !chatInput.trim()}
+              >
+                <Icon name="send" size={14} />
+              </Button>
+            </div>
+          </>
+        )}
       </section>
 
       {/* 명령 버튼 */}
@@ -99,7 +214,7 @@ export function AdminPage({ onBack }: AdminPageProps) {
           </select>
           <Button
             variant="primary"
-            onClick={handleCustom}
+            onClick={() => sendCommand('custom', customCmd)}
             disabled={isSending || !adminSessionConnected}
           >
             실행
@@ -107,16 +222,16 @@ export function AdminPage({ onBack }: AdminPageProps) {
         </div>
 
         {!adminSessionConnected && (
-          <p className="mt-2 text-[12px] text-accent-red">관리 세션이 연결되어 있지 않습니다. 맥북에어에서 admin-session을 시작해주세요.</p>
+          <p className="mt-2 text-[12px] text-accent-red">관리 세션이 연결되어 있지 않습니다.</p>
         )}
       </section>
 
-      {/* 최근 명령 결과 */}
-      {recentCommands.length > 0 && (
+      {/* 최근 명령 결과 (message 제외) */}
+      {recentCommands.filter((c) => c.command !== 'message').length > 0 && (
         <section className="mb-8">
           <h2 className="text-[13px] text-mute uppercase tracking-wider mb-3">최근 명령</h2>
           <div className="flex flex-col gap-2">
-            {[...recentCommands].reverse().map((entry) => (
+            {[...recentCommands].filter((c) => c.command !== 'message').reverse().map((entry) => (
               <div key={entry.commandId} className="bg-surface-card border border-hairline rounded-md px-4 py-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[13px] font-medium text-body">
@@ -172,13 +287,23 @@ export function AdminPage({ onBack }: AdminPageProps) {
   )
 }
 
-function StatusRow({ label, connected, loading }: { label: string; connected: boolean; loading: boolean }) {
+function StatusRow({
+  label, connected, loading, sub,
+}: {
+  label: string
+  connected: boolean
+  loading: boolean
+  sub?: string
+}) {
   return (
     <div className="flex items-center gap-2.5 px-4 py-3 bg-surface-card border border-hairline rounded-md">
       <span className={`w-2 h-2 rounded-full shrink-0 ${
         loading ? 'bg-ash animate-pulse' : connected ? 'bg-accent-green' : 'bg-accent-red'
       }`} />
-      <span className="text-[14px] text-body">{label}</span>
+      <div className="flex flex-col">
+        <span className="text-[14px] text-body">{label}</span>
+        {sub && <span className="text-[11px] text-mute font-mono">{sub}</span>}
+      </div>
       <span className="ml-auto text-[12px] text-mute">
         {loading ? '확인 중' : connected ? '연결됨' : '오프라인'}
       </span>

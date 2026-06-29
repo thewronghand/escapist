@@ -21,15 +21,26 @@ const MAX_LOGS = 500
 // 이전 연결은 SSE 스트림이 닫히기 전까지 연결 상태로 보이지만 명령은 받지 못한다.
 let pushFn: CommandPushFn | null = null
 
-export function registerAdminSession(fn: CommandPushFn): () => void {
+// 맥북에어에서 spawn된 관제 Claude 세션 ID — cmux에서 직접 붙을 때도 사용
+let managerSessionId: string | null = null
+
+export function registerAdminSession(fn: CommandPushFn, sessionId?: string): () => void {
   pushFn = fn
+  if (sessionId) managerSessionId = sessionId
   return () => {
-    if (pushFn === fn) pushFn = null
+    if (pushFn === fn) {
+      pushFn = null
+      managerSessionId = null
+    }
   }
 }
 
 export function isAdminSessionConnected(): boolean {
   return pushFn !== null
+}
+
+export function getManagerSessionId(): string | null {
+  return managerSessionId
 }
 
 export function issueCommand(command: AdminCommandType, payload?: string): CommandEntry {

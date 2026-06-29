@@ -17,13 +17,13 @@ export const AdminEvent = {
   RESULT: 'admin:result',
 } as const
 
-export type AdminCommandType = 'restart' | 'update' | 'custom'
+export type AdminCommandType = 'restart' | 'update' | 'custom' | 'message'
 
 export interface AdminCommandRequest {
   type: typeof AdminEvent.COMMAND
   commandId: string
   command: AdminCommandType
-  /** custom 명령일 때 실행할 셸 명령어 */
+  /** custom: 셸 명령어 / message: 관제 세션에 전달할 텍스트 */
   payload?: string
   issuedAt: string
 }
