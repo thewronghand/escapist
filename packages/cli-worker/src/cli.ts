@@ -112,6 +112,13 @@ function runClaude(args: string[]): Promise<ClaudeResponse> {
   })
 }
 
+// Opus 4.8의 tool_use JSON 파싱 버그를 피하려 4.7로 고정.
+const CLAUDE_MODEL = 'claude-opus-4-7'
+
+// 파일 변경·삭제 경로(Edit/Write/NotebookEdit/Bash)는 차단하고
+// WebSearch 등 읽기·조회 도구는 허용한다.
+const DISALLOWED_TOOLS = ['Edit', 'Write', 'NotebookEdit', 'Bash']
+
 export async function startSession(
   prompt: string,
   systemPrompt: string,
@@ -121,6 +128,8 @@ export async function startSession(
     '-p', prompt,
     '--system-prompt', systemPrompt,
     '--output-format', 'json',
+    '--model', CLAUDE_MODEL,
+    '--disallowed-tools', ...DISALLOWED_TOOLS,
   ])
 }
 
@@ -133,5 +142,7 @@ export async function resumeSession(
     '--resume', sessionId,
     '-p', prompt,
     '--output-format', 'json',
+    '--model', CLAUDE_MODEL,
+    '--disallowed-tools', ...DISALLOWED_TOOLS,
   ])
 }
