@@ -56,9 +56,10 @@ function ChipInput({ value, onChange, placeholder }: {
 
 interface SettingsPageProps {
   onBack: () => void
+  onAdmin?: () => void
 }
 
-export function SettingsPage({ onBack }: SettingsPageProps) {
+export function SettingsPage({ onBack, onAdmin }: SettingsPageProps) {
   const { profile, loading, saving, save } = useProfile()
   const { toast } = useToast()
   const [form, setForm] = useState<UserProfile>(profile)
@@ -174,6 +175,18 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         <Button variant="primary" onClick={handleSave} disabled={saving}>
           {saving ? '저장 중...' : '프로필 저장'}
         </Button>
+
+        {onAdmin && (
+          <div className="pt-4 border-t border-hairline">
+            <button
+              onClick={onAdmin}
+              className="flex items-center gap-2 text-[13px] text-mute hover:text-body transition-colors"
+            >
+              <Icon name="settings" size={14} />
+              관리자 페이지
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
