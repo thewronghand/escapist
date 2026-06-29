@@ -117,13 +117,17 @@ app.get('/api/admin/commands/stream', async (req, reply) => {
   })
   reply.raw.flushHeaders()
 
+  const sessionId = typeof req.query === 'object' && req.query !== null
+    ? (req.query as Record<string, string>)['sessionId']
+    : undefined
+
   const unregister = registerAdminSession((entry) => {
     const data = JSON.stringify({ type: AdminEvent.COMMAND, ...entry })
     reply.raw.write(`data: ${data}\n\n`)
-  })
+  }, sessionId)
 
   // 연결 확인용 최초 이벤트
-  reply.raw.write(`data: ${JSON.stringify({ type: 'admin:connected' })}\n\n`)
+  reply.raw.write(`data: ${JSON.stringify({ type: 'admin:connected', sessionId: sessionId ?? null })}\n\n`)
 
   // 리버스 프록시 유휴 타임아웃 방지 keep-alive
   const keepAlive = setInterval(() => {

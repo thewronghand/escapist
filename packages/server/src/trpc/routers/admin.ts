@@ -8,6 +8,7 @@ import {
   getRecentCommands,
   getWorkerLogs,
   isAdminSessionConnected,
+  getManagerSessionId,
 } from '../../admin/store.js'
 
 const adminGuard = protectedProcedure.use(({ ctx, next }) => {
@@ -21,12 +22,13 @@ const adminGuard = protectedProcedure.use(({ ctx, next }) => {
 export const adminRouter = router({
   status: adminGuard.query(() => ({
     adminSessionConnected: isAdminSessionConnected(),
+    managerSessionId: getManagerSessionId(),
   })),
 
   sendCommand: adminGuard
     .input(
       z.object({
-        command: z.enum(['restart', 'update', 'custom']),
+        command: z.enum(['restart', 'update', 'custom', 'message']),
         payload: z.string().optional(),
       }),
     )
