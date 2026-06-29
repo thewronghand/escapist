@@ -7,6 +7,7 @@
 - Claude Code CLI 설치 및 로그인 (`claude` 명령어 동작 확인)
 - Node.js 22+ 설치
 - pnpm 설치
+- **GnuPG 설치 필수** (`brew install gnupg`) — `update` 명령이 GPG 서명을 검증함. 미설치 시 update 전면 차단됨
 
 ## 설치 절차
 
@@ -49,7 +50,25 @@ ADMIN_SESSION_SECRET=<랜덤 시크릿, 예: openssl rand -hex 32>
 # WORKER_CWD=/path/to/escapist
 ```
 
-### 5. Claude CLI 로그인 확인
+### 5. GPG 공개키 등록 (update 명령 서명 검증용)
+
+회사 맥북에서 공개키 파일(`escapist-gpg-pub.asc`)을 에어드롭 등으로 받은 뒤:
+
+```bash
+brew install gnupg   # 미설치 시
+gpg --import ~/Downloads/escapist-gpg-pub.asc
+gpg --edit-key 8D0F8A054C395458
+# gpg 프롬프트에서:
+#   trust → 5 (ultimate) → y → quit
+```
+
+핑거프린트로 무결성 확인:
+```bash
+gpg --fingerprint 8D0F8A054C395458
+# 출력: 89FC AE9B C0AF 1153 6C1E  3ECA 8D0F 8A05 4C39 5458
+```
+
+### 6. Claude CLI 로그인 확인
 ```bash
 claude --version
 claude  # 로그인 안 됐으면 진행
