@@ -118,7 +118,7 @@ export function AdminPage({ onBack }: AdminPageProps) {
             label="관제 Claude 세션"
             connected={!!managerSessionId}
             loading={statusLoading}
-            sub={managerSessionId ? `ID: ${managerSessionId.slice(0, 12)}…` : undefined}
+            sub={managerSessionId ? `ID: ${managerSessionId}` : undefined}
           />
         </div>
       </section>
