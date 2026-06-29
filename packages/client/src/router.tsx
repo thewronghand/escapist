@@ -7,6 +7,7 @@ import { InterviewPage } from '@/pages/InterviewPage'
 import { EndlessPage } from '@/pages/EndlessPage'
 import { SandboxPage } from '@/pages/SandboxPage'
 import { SettingsPageWrapper } from '@/pages/SettingsPageWrapper'
+import { AdminPage } from '@/pages/AdminPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -50,6 +51,11 @@ function EndlessWrapper() {
   return <EndlessPage onNavigate={(nav: string) => router.navigate({ to: NAV_MAP[nav] ?? '/' })} />
 }
 
+function AdminWrapper() {
+  const router = useRouter()
+  return <AdminPage onBack={() => router.navigate({ to: '/' })} />
+}
+
 const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login', component: LoginPage })
 
 const appRoute = createRoute({ getParentRoute: () => rootRoute, id: 'app', component: AuthGate })
@@ -63,6 +69,7 @@ const routeTree = rootRoute.addChildren([
     createRoute({ getParentRoute: () => appRoute, path: '/endless', component: EndlessWrapper }),
     createRoute({ getParentRoute: () => appRoute, path: '/sandbox', component: SandboxPage }),
     createRoute({ getParentRoute: () => appRoute, path: '/settings', component: SettingsPageWrapper }),
+    createRoute({ getParentRoute: () => appRoute, path: '/admin', component: AdminWrapper }),
   ]),
 ])
 

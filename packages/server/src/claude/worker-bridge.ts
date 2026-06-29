@@ -2,8 +2,9 @@ import { v4 as uuid } from 'uuid'
 import type { WebSocket } from '@fastify/websocket'
 import { CLI_WORKER_SECRET } from './config.js'
 import { logger } from '../lib/logger.js'
-import type { WorkerRequest } from '@escapist/shared'
+import type { WorkerRequest, WorkerLogReport } from '@escapist/shared'
 import { WorkerEvent } from '@escapist/shared'
+import { appendWorkerLogs } from '../admin/store.js'
 
 interface ClaudeResponse {
   sessionId: string
@@ -39,10 +40,19 @@ export function handleWorkerConnection(socket: WebSocket, authHeader: string | u
   logger.info('cli-worker 연결됨')
 
   socket.on('message', (raw) => {
-    let msg: { type: string; requestId?: string; sessionId?: string; result?: string; error?: string }
+    let msg: { type: string; requestId?: string; sessionId?: string; result?: string; error?: string; lines?: string[] }
     try {
       msg = JSON.parse(raw.toString()) as typeof msg
     } catch {
+      return
+    }
+
+    if (msg.type === WorkerEvent.LOG_REPORT) {
+      const report = msg as unknown as WorkerLogReport
+      if (Array.isArray(report.lines)) {
+        appendWorkerLogs(report.lines)
+        logger.debug({ count: report.lines.length }, 'PM2 로그 수신')
+      }
       return
     }
 
@@ -53,7 +63,7 @@ export function handleWorkerConnection(socket: WebSocket, authHeader: string | u
 
     pending.delete(msg.requestId)
 
-    if (msg.type === WorkerEvent.RESULT && msg.sessionId && msg.result) {
+    if (msg.type === WorkerEvent.RESULT && msg.sessionId && typeof msg.result === 'string') {
       entry.resolve({ sessionId: msg.sessionId, result: msg.result })
     } else {
       entry.reject(new Error(msg.error ?? 'Unknown worker error'))
